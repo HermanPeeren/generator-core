@@ -25,10 +25,30 @@ source model  ──transformation──▶  target structure model  ──emitt
 A *target* is a structure metamodel plus emitters plus a template set. Joomla 6
 is the first; targets are pluggable, and need not be Joomla versions at all.
 
+## What is in it
+
+| | |
+|---|---|
+| `Pipeline` | validates a model, runs generators over it, returns the file set |
+| `GeneratorInterface` | one concern's contribution; pure, same model in, same bytes out |
+| `Output\FileCollection` | the result, in memory, with the path rules enforced on the way in |
+| `Output\ZipWriter` | that file set as an archive, or written under a directory |
+| `Output\ProtectedRegionMerger` | carries hand-written code across a regeneration |
+| `Template\RendererInterface` | template to text, so no generator is tied to an engine |
+| `Template\PhpRenderer` | plain PHP templates, no vendored engine |
+| `Emitter\{Php,Xml,Ini}Emitter` | escaping for each target language |
+| `Model\{ModelInterface,ValidatorInterface,ValidationException}` | the model boundary |
+
+Two things the emitters exist for, worth stating plainly: a model value
+interpolated into generated source unescaped is the same bug class as SQL
+injection, one target language over; and no template engine solves it, because
+the one that escapes by default escapes for HTML, which is wrong here.
+
 ## Status
 
-Early. The skeleton is in place and the quality gates run; the engine itself
-arrives at step 0.2 of the rework plan.
+The engine is in place and the quality gates run. Still to come: the Target
+abstraction (step 0.4 of the rework plan), the golden-file test harness (0.5)
+and the Joomla library package (0.6).
 
 ## Development
 

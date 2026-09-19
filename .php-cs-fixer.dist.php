@@ -6,6 +6,11 @@
  * PSR-12 plus a few rules this codebase follows. Run it with `composer cs-fix`;
  * it rewrites files, so read the diff.
  *
+ * declare_strict_types is deliberately not a rule here: php-cs-fixer classes it
+ * as risky, because adding it can change how a file behaves at runtime. It is
+ * enforced by NoFrameworkDependencyTest instead, so that it is reviewed rather
+ * than applied silently.
+ *
  * Once golden fixtures exist, tests/Fixtures/expected must be excluded here:
  * it is generated output compared byte for byte, and reformatting it would
  * break the very thing it pins.
@@ -29,7 +34,6 @@ return (new PhpCsFixer\Config())
             'default'   => 'single_space',
             'operators' => ['=>' => 'align_single_space_minimal', '=' => 'align_single_space_minimal'],
         ],
-        'declare_strict_types'        => true,
         'no_unused_imports'           => true,
         'ordered_imports'             => ['sort_algorithm' => 'alpha'],
         'single_quote'                => true,
