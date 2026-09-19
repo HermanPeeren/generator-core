@@ -10,7 +10,9 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      # v5 is v4 on the node24 runtime. v4 declares node20, which GitHub
+      # deprecated in September 2025; the runners warn and use node24 anyway.
+      - uses: actions/checkout@v5
 
       - name: Set up PHP
         uses: shivammathur/setup-php@v2
