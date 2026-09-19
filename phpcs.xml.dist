@@ -19,6 +19,16 @@
 
 	<rule ref="PSR12"/>
 
+	<!--
+		A build script declares its helpers and then does its work in the same
+		file, which is what a script is. The sniff is about library files, so it is
+		lifted for build/ and tools/ and stays in force for src/.
+	-->
+	<rule ref="PSR1.Files.SideEffects">
+		<exclude-pattern>build/*</exclude-pattern>
+		<exclude-pattern>tools/*</exclude-pattern>
+	</rule>
+
 	<rule ref="Generic.Files.LineLength">
 		<properties>
 			<property name="lineLimit" value="150"/>

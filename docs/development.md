@@ -21,6 +21,10 @@ tests/
   Support/                   a worked example: DemoModel, DemoTarget, three generators
   Fixtures/golden/           models and the output approved for them
 tools/generate-fixture.php   accepts a reviewed change to the approved output
+tools/verify-library.php     installs the built package into a Joomla and checks it
+build/build.php              assembles the installable library
+build/update-xml.php         writes updates.xml from the manifest
+yepr_gen.xml                 the library manifest: the one place the version lives
 ```
 
 `src/Core` rather than `src` because the repository mirrors the installed
@@ -156,12 +160,75 @@ Git does not track empty directories, which is how the first CI run failed: `src
 and `build` existed locally, were listed in `phpstan.neon`, and were absent from
 the checkout. A working tree that passes says nothing about what a runner gets.
 
+## Building the library
+
+```
+php build/build.php                              -> build/lib_yepr_gen-<version>.zip
+php build/update-xml.php                         -> updates.xml
+php tools/verify-library.php /path/to/joomla     installs it, checks it, restores the site
+```
+
+The version lives in `yepr_gen.xml` and nowhere else. The build script and the
+update-server script both read it from there, so there is one place to change and
+no second place to forget. `composer.json` deliberately carries no version: for a
+package distributed through VCS, the tag is the version.
+
+The build stages a copy, resolves dependencies with `--no-dev`, and zips it.
+Two exclusions are deliberate:
+
+- **`src/Core/Testing`** is left out. It exists for consuming projects' test
+  suites, not for anything the library does at run time, and it is the only part
+  that would drag PHPUnit onto a production site.
+- **`composer.json` and the lock** are build inputs, not things to ship.
+
+Zip entry names use forward slashes. A backslash in an entry becomes a literal
+backslash in a filename on Linux, and the extension then simply fails to load -
+which is why the build normalises rather than trusting the platform.
+
+### Verifying an install
+
+`tools/verify-library.php` does what the installer does with the files, then runs
+Joomla's own `JNamespacePsr4Map` - the class the `extension - namespacemap`
+plugin calls after an install - and checks five things:
+
+1. the files land where a library's files land;
+2. `Yepr\Gen\` appears in the map Joomla built, from the manifest alone;
+3. a library class resolves through that map, with no composer loaded;
+4. a vendored Twig class resolves, registered by `TwigRenderer` itself;
+5. the renderer actually renders.
+
+It refuses a site that already has the library, and restores everything on exit
+including on failure - the namespace cache is backed up and put back. Verified
+against Joomla 6.1.3.
+
+Installing by hand through the Joomla interface proves the same thing, but only
+once, and only where somebody remembers to do it.
+
+### What a consuming extension has to do
+
+Nothing, for autoloading. `Yepr\Gen\*` resolves from the manifest, and the
+vendored packages register themselves.
+
+It does have to make sure the library is *there*. Each extension carries a copy
+of the library package and installs it from its own install script when it is
+missing or too old - the Regular Labs and Akeeba pattern, where the package
+manifest does not declare the library at all and `script.install.php` does the
+work. That script cannot come from the library, since it runs before the library
+exists, so it belongs to each extension. It is written when the first consuming
+extension exists rather than now, because an installer with nothing to install
+into cannot be tested.
+
+No version negotiation is needed: the library is used only within this family of
+extensions and all of it is developed in one place, so the check is presence and
+a minimum version.
+
 ## Releasing
 
 CI runs the three gates on push and pull request. A release is a tag; the
-workflow builds both artefacts and publishes them.
+workflow builds the artefacts and publishes them.
 
-Versions to keep in step at release time: the composer package, the library
-manifest, and the update server XML a site reads to learn a new version exists. A
-stale update server either hides a release or offers a download that 404s, and
-neither shows up in any test.
+Three versions must agree at release time: the tag, `yepr_gen.xml`, and the
+`updates.xml` a site reads to learn a new version exists. The last is generated,
+so the check is that regenerating it produces no diff. A stale update server
+either hides a release or offers a download that 404s, and neither shows up in
+any test.

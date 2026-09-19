@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<extension type="library" method="upgrade">
+	<name>Yepr Gen Library</name>
+	<libraryname>yepr_gen</libraryname>
+	<version>0.1.0</version>
+	<creationDate>September 2026</creationDate>
+	<author>Herman Peeren</author>
+	<authorEmail>herman@yepr.nl</authorEmail>
+	<authorUrl>https://yepr.nl</authorUrl>
+	<copyright>Copyright (C) Yepr, Herman Peeren. All rights reserved.</copyright>
+	<license>GNU General Public License version 3 or later; see LICENSE.txt</license>
+	<description>Shared code for the Yepr generator extensions: the generation engine and the packages it depends on. Installed once and used by all of them, so a site carries one copy rather than one per extension.</description>
+
+	<!--
+		This one element is the whole of the autoloading job for Yepr\Gen\*.
+		Joomla's namespacemap builder reads it from this manifest and writes
+		administrator/cache/autoload_psr4.php, and the extension - namespacemap
+		plugin rebuilds that file on every install, update and uninstall.
+
+		The vendored third-party packages cannot ride on it, because a library
+		manifest declares exactly one namespace. They register themselves, from
+		the one class that needs them - see Core/Template/TwigRenderer.
+	-->
+	<namespace path="src">Yepr\Gen</namespace>
+
+	<files>
+		<filename>yepr_gen.xml</filename>
+		<filename>LICENSE.txt</filename>
+		<folder>src</folder>
+		<folder>vendor</folder>
+	</files>
+
+	<updateservers>
+		<server type="extension" name="Yepr Gen Library">https://raw.githubusercontent.com/HermanPeeren/generator-core/main/updates.xml</server>
+	</updateservers>
+</extension>
