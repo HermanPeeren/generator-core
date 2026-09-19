@@ -1,0 +1,7 @@
+# Generated output is compared byte for byte against the golden fixtures, so
+# line endings must not drift between platforms.
+* text=auto eol=lf
+
+*.png binary
+*.jpg binary
+*.zip binary
