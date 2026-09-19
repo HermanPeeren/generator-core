@@ -34,10 +34,13 @@ final class Interpolator
     /**
      * The filters a placeholder may use.
      *
+     * Public because a form offers them as a dropdown, and the dropdown has to
+     * be the same list the expander accepts.
+     *
      * @var    string[]
      * @since  0.2.0
      */
-    private const FILTERS = ['lower', 'upper', 'ucfirst', 'lcfirst'];
+    public const FILTERS = ['lower', 'upper', 'ucfirst', 'lcfirst'];
 
     /**
      * Expand `{name}` and `{name|filter}` against a set of values.

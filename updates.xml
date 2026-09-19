@@ -9,9 +9,9 @@
 		<description>Shared code for the Yepr generator extensions.</description>
 		<element>yepr_gen</element>
 		<type>library</type>
-		<version>0.2.0</version>
+		<version>0.3.0</version>
 		<downloads>
-			<downloadurl type="full" format="zip">https://github.com/HermanPeeren/generator-core/releases/download/v0.2.0/lib_yepr_gen-0.2.0.zip</downloadurl>
+			<downloadurl type="full" format="zip">https://github.com/HermanPeeren/generator-core/releases/download/v0.3.0/lib_yepr_gen-0.3.0.zip</downloadurl>
 		</downloads>
 		<maintainer>Herman Peeren</maintainer>
 		<maintainerurl>https://yepr.nl</maintainerurl>

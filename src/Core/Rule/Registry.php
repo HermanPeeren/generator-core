@@ -111,7 +111,24 @@ final class Registry
     }
 
     /**
-     * Every registered name, for an error message or a test.
+     * Every registered name, sorted.
+     *
+     * What a form offers as choices, and what a vocabulary descriptor carries.
+     *
+     * @return  string[]
+     *
+     * @since   0.3.0
+     */
+    public function all(): array
+    {
+        $names = array_keys($this->entries);
+        sort($names);
+
+        return $names;
+    }
+
+    /**
+     * Every registered name, for an error message.
      *
      * @return  string  Comma-separated, sorted.
      *
@@ -119,8 +136,7 @@ final class Registry
      */
     public function names(): string
     {
-        $names = array_keys($this->entries);
-        sort($names);
+        $names = $this->all();
 
         return $names === [] ? '(none)' : implode(', ', $names);
     }

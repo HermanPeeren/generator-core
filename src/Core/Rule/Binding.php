@@ -73,6 +73,14 @@ final class Binding
     public const FRAGMENTS = 'fragments';
 
     /**
+     * The five, in the order a form should offer them.
+     *
+     * @var    string[]
+     * @since  0.3.0
+     */
+    public const KINDS = [self::LITERAL, self::PATH, self::NODE, self::DERIVE, self::FRAGMENTS];
+
+    /**
      * Constructor.
      *
      * @param   string   $kind      One of the five constants above.
@@ -109,13 +117,12 @@ final class Binding
      */
     public static function fromArray(array $data, string $name, string $ruleId): self
     {
-        $kinds = [self::LITERAL, self::PATH, self::NODE, self::DERIVE, self::FRAGMENTS];
-        $found = array_values(array_intersect($kinds, array_keys($data)));
+        $found = array_values(array_intersect(self::KINDS, array_keys($data)));
 
         if (\count($found) !== 1) {
             throw RuleException::inRule(
                 $ruleId,
-                'binding "' . $name . '" must name exactly one of: ' . implode(', ', $kinds) . '.'
+                'binding "' . $name . '" must name exactly one of: ' . implode(', ', self::KINDS) . '.'
             );
         }
 

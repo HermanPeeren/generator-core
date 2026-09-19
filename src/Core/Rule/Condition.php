@@ -60,6 +60,14 @@ final class Condition
     public const NOT_EQUALS = 'notEquals';
 
     /**
+     * The four, in the order a form should offer them.
+     *
+     * @var    string[]
+     * @since  0.3.0
+     */
+    public const OPERATORS = [self::HAS, self::MISSING, self::EQUALS, self::NOT_EQUALS];
+
+    /**
      * Constructor.
      *
      * @param   string  $operator  One of the four constants above.
@@ -92,7 +100,7 @@ final class Condition
         $operator = (string) ($data['operator'] ?? '');
         $path     = (string) ($data['path'] ?? '');
 
-        if (!\in_array($operator, [self::HAS, self::MISSING, self::EQUALS, self::NOT_EQUALS], true)) {
+        if (!\in_array($operator, self::OPERATORS, true)) {
             throw RuleException::inRule(
                 $ruleId,
                 'unknown condition operator "' . $operator . '". Known: has, missing, equals, notEquals.'
