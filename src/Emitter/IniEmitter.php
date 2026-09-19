@@ -19,31 +19,19 @@ namespace Yepr\GeneratorCore\Emitter;
  * fails silently, showing raw keys in the interface, which is a miserable thing
  * to debug.
  *
- * How a literal quote is spelled inside that value is a dialect question, not an
- * ini one: Joomla writes "_QQ_", other consumers use a backslash escape. The
- * default follows Joomla because that is the first target, but a target that
- * spells it differently passes its own.
+ * An embedded double quote is written as a backslash escape, which is both the
+ * ordinary ini spelling and what Joomla has expected since 4.0: the file is read
+ * with parse_ini_string() in RAW mode, and the single postprocessing step in
+ * LanguageHelper::parseIniFile() is str_replace('\"', '"', $strings).
+ *
+ * The older Joomla spelling "_QQ_" is deliberately not supported. It is not
+ * merely legacy: nothing replaces it any more, so a value written that way now
+ * reaches the interface with a literal _QQ_ in it.
  *
  * @since  0.2.0
  */
 final class IniEmitter
 {
-    /**
-     * Joomla spells an embedded double quote as "_QQ_".
-     *
-     * @var    string
-     * @since  0.2.0
-     */
-    public const QUOTE_JOOMLA = '"_QQ_"';
-
-    /**
-     * The common ini dialect spells it as a backslash escape.
-     *
-     * @var    string
-     * @since  0.2.0
-     */
-    public const QUOTE_BACKSLASH = '\\"';
-
     /**
      * Render one KEY="value" line.
      *
@@ -54,9 +42,9 @@ final class IniEmitter
      *
      * @since   0.2.0
      */
-    public static function line(string $key, string $value, string $quote = self::QUOTE_JOOMLA): string
+    public static function line(string $key, string $value): string
     {
-        return self::key($key) . '="' . self::value($value, $quote) . '"';
+        return self::key($key) . '="' . self::value($value) . '"';
     }
 
     /**
@@ -90,13 +78,19 @@ final class IniEmitter
      *
      * @since   0.2.0
      */
-    public static function value(string $value, string $quote = self::QUOTE_JOOMLA): string
+    public static function value(string $value): string
     {
         // Collapse newlines: an ini value is a single line.
         $value = preg_replace('/\R+/', ' ', $value) ?? '';
 
-        // A double quote has to be spelled the way this dialect spells it.
-        $value = str_replace('"', $quote, $value);
+        // A double quote is written as a backslash escape.
+        //
+        // Only the quote. Doubling backslashes would be wrong here: the file is
+        // read in RAW mode, where no escape is processed, and the one thing the
+        // reader undoes is \" - so a doubled backslash stays doubled and reaches
+        // the interface that way. Verified by round-tripping a Windows path and
+        // a trailing backslash through parse_ini_string(RAW) plus that replace.
+        $value = str_replace('"', '\\"', $value);
 
         // Strip control characters that would corrupt the file.
         return preg_replace('/[\x00-\x1F\x7F]/u', '', $value) ?? '';

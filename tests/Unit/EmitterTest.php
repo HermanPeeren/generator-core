@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Yepr\GeneratorCore\Tests\Unit;
 
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Yepr\GeneratorCore\Emitter\IniEmitter;
 use Yepr\GeneratorCore\Emitter\PhpEmitter;
@@ -81,13 +82,47 @@ final class EmitterTest extends TestCase
 
         $this->assertIsArray($parsed);
         $this->assertArrayHasKey('COM_X_LABEL', $parsed);
-        $this->assertStringNotContainsString("\n", $parsed['COM_X_LABEL']);
+        $this->assertStringNotContainsString("\n", (string) $parsed['COM_X_LABEL']);
     }
 
-    public function testTheIniQuoteDialectIsConfigurable(): void
+    public function testAQuoteIsWrittenAsABackslashEscape(): void
     {
-        $this->assertSame('A="say "_QQ_"hi"_QQ_""', IniEmitter::line('A', 'say "hi"'));
-        $this->assertSame('A="say \\"hi\\""', IniEmitter::line('A', 'say "hi"', IniEmitter::QUOTE_BACKSLASH));
+        $this->assertSame('A="say \"hi\""', IniEmitter::line('A', 'say "hi"'));
+    }
+
+    /**
+     * The round trip is the assertion that matters: a translation has to come
+     * back out of the reader exactly as it went in.
+     *
+     * The reader is reproduced here rather than mocked - parse_ini_string in RAW
+     * mode, then the single str_replace('\"', '"') that
+     * LanguageHelper::parseIniFile() applies. Backslashes are deliberately not
+     * escaped on the way in, because RAW mode never unescapes them and doubling
+     * them would surface in the interface.
+     *
+     * @param  string  $value  A translation to round-trip.
+     */
+    #[DataProvider('translations')]
+    public function testATranslationSurvivesTheJoomlaReadPath(string $value): void
+    {
+        $parsed = parse_ini_string(IniEmitter::line('K', $value), false, INI_SCANNER_RAW);
+
+        $this->assertIsArray($parsed);
+        $this->assertSame($value, str_replace('\"', '"', (string) $parsed['K']));
+    }
+
+    /** @return array<string, string[]> */
+    public static function translations(): array
+    {
+        return [
+            'plain'                => ['hello'],
+            'one quote'            => ['say "hi"'],
+            'backslash'            => ['a\b'],
+            'trailing backslash'   => ['ends with\\'],
+            'backslash then quote' => ['a\"b'],
+            'windows path'         => ['C:\wamp\www'],
+            'html attribute'       => ['<a href="https://example.org">link</a>'],
+        ];
     }
 
     public function testALanguageKeyIsCheckedAndUpperCased(): void
