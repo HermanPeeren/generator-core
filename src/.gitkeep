@@ -1,0 +1,3 @@
+# Placeholder: the generator core's own classes arrive at step 0.2 of the rework
+# plan. Until then this keeps the directory in git, because phpstan and phpcs are
+# configured to analyse it and fail on a path that does not exist.
