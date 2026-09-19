@@ -42,7 +42,8 @@ is the first; targets are pluggable, and need not be Joomla versions at all.
 | `Output\ZipWriter` | that file set as an archive, or written under a directory |
 | `Output\ProtectedRegionMerger` | carries hand-written code across a regeneration |
 | `Template\RendererInterface` | template to text, so no generator is tied to an engine |
-| `Template\PhpRenderer` | plain PHP templates, no vendored engine |
+| `Template\TwigRenderer` | the default: templates from files **or** from memory, strict variables, no HTML escaping |
+| `Template\PhpRenderer` | plain PHP templates, for a consumer that wants no engine |
 | `Emitter\{Php,Xml,Ini}Emitter` | escaping for each target language |
 | `Model\{ModelInterface,ValidatorInterface,ValidationException}` | the model boundary |
 
@@ -67,7 +68,13 @@ composer cs             # phpcs
 composer cs-fix-dry     # php-cs-fixer, dry run with a diff
 ```
 
-Requires PHP 8.3 or later, which is Joomla 6's minimum.
+Requires PHP 8.3 or later, which is Joomla 6's minimum, and Twig 3.
+
+Twig is the default engine because a template can come from a database as easily
+as from a file, and because a template someone else may edit is untrusted input
+that a plain PHP template would execute. Exactly one class knows Twig exists -
+`Template\TwigRenderer` - and a test enforces that, so the choice stays a
+registration rather than a rewrite.
 
 ## Licence
 

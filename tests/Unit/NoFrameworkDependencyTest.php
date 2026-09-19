@@ -7,16 +7,29 @@ namespace Yepr\Gen\Core\Tests\Unit;
 use PHPUnit\Framework\TestCase;
 
 /**
- * The core must stay framework-agnostic.
+ * Two boundaries the core has to keep, which are not the same boundary.
  *
- * Not a style rule. The moment a generator reaches for a CMS singleton it stops
+ * **No framework.** The moment a generator reaches for a CMS singleton it stops
  * being a pure model-to-text transformation, the unit suite needs a bootstrap,
- * and the whole thing stops being usable from another platform. Guard the
- * boundary mechanically rather than by intention.
+ * and the whole thing stops being usable from another platform. No exceptions,
+ * ever.
+ *
+ * **No template engine past the renderer.** Twig is a dependency, deliberately,
+ * and exactly one class may know that: the Twig renderer. If a generator or an
+ * emitter imported Twig directly, RendererInterface would have stopped being an
+ * abstraction and swapping engines would stop being a registration change.
+ *
+ * These were one list once, which read as though Twig were a framework and hid
+ * the second rule entirely. Separated, the second rule survives Twig arriving -
+ * a blanket ban would simply have been deleted, taking the real guarantee with
+ * it.
  */
 final class NoFrameworkDependencyTest extends TestCase
 {
-    private const FRAMEWORKS = ['Joomla', 'Symfony', 'Illuminate', 'Drupal', 'Twig'];
+    private const FRAMEWORKS = ['Joomla', 'Symfony', 'Illuminate', 'Drupal'];
+
+    /** Engine => the one source file allowed to import it, relative to src/. */
+    private const ENGINES = ['Twig' => 'Core/Template/TwigRenderer.php'];
 
     public function testTheCoreImportsNoFramework(): void
     {
@@ -26,17 +39,59 @@ final class NoFrameworkDependencyTest extends TestCase
             $source = (string) file_get_contents($file);
 
             foreach (self::FRAMEWORKS as $framework) {
-                // The namespace separator is a single backslash; preg_quote keeps
-                // this readable instead of counting escapes across two layers.
-                $prefix = preg_quote($framework . '\\', '~');
-
-                if (preg_match('~^\s*use\s+' . $prefix . '~mi', $source)) {
+                if ($this->imports($source, $framework)) {
                     $offenders[] = basename($file) . ' imports ' . $framework;
                 }
             }
         }
 
         $this->assertSame([], $offenders, implode(', ', $offenders));
+    }
+
+    public function testOnlyItsOwnRendererKnowsAboutATemplateEngine(): void
+    {
+        $offenders = [];
+        $root      = str_replace('\\', '/', \dirname(__DIR__, 2) . '/src') . '/';
+
+        foreach ($this->sourceFiles() as $file) {
+            $relative = str_replace($root, '', str_replace('\\', '/', $file));
+            $source   = (string) file_get_contents($file);
+
+            foreach (self::ENGINES as $engine => $allowed) {
+                if ($relative === $allowed) {
+                    continue;
+                }
+
+                if ($this->imports($source, $engine)) {
+                    $offenders[] = $relative . ' imports ' . $engine;
+                }
+            }
+        }
+
+        $this->assertSame([], $offenders, implode(', ', $offenders));
+    }
+
+    public function testTheRendererAllowedToImportTwigActuallyDoesExist(): void
+    {
+        // Otherwise the rule above passes by naming a file that is not there,
+        // and would keep passing after the renderer was renamed away.
+        foreach (self::ENGINES as $engine => $allowed) {
+            $path = \dirname(__DIR__, 2) . '/src/' . $allowed;
+
+            $this->assertFileExists($path, 'The file allowed to import ' . $engine . ' is missing.');
+            $this->assertTrue(
+                $this->imports((string) file_get_contents($path), $engine),
+                $allowed . ' is the only file allowed to import ' . $engine . ', but it does not.'
+            );
+        }
+    }
+
+    /** Whether a source file imports anything from a namespace prefix. */
+    private function imports(string $source, string $prefix): bool
+    {
+        // The namespace separator is a single backslash; preg_quote keeps this
+        // readable instead of counting escapes across two layers.
+        return (bool) preg_match('~^\s*use\s+' . preg_quote($prefix . '\\', '~') . '~mi', $source);
     }
 
     public function testTheCoreCallsNoGlobalCmsEntryPoint(): void
