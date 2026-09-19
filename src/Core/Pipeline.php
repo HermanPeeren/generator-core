@@ -13,132 +13,70 @@ namespace Yepr\Gen\Core;
 use Yepr\Gen\Core\Model\ModelInterface;
 use Yepr\Gen\Core\Model\ValidatorInterface;
 use Yepr\Gen\Core\Output\FileCollection;
+use Yepr\Gen\Core\Target\TargetInterface;
 
 /**
- * Validates a model and runs every applicable generator over it.
+ * Runs a model through a target and returns the files that result.
+ *
+ * The pipeline knows nothing about what is being generated. It asks the target
+ * which generators to run and in what order, which is what makes adding a target
+ * a matter of registering one rather than of changing this class.
  *
  * The result is held in memory; persisting it is somebody else's job. Nothing
  * here writes a file, which is what lets a whole generation run be asserted in a
  * unit test without a temp directory.
  *
- * Generators run in the order given. Order is not an implementation detail: a
- * generator that inventories what others produced - a manifest listing the
- * folders that were generated - has to run after them.
- *
- * Deliberately not here: any notion of *which* generators a given target or type
- * needs. That is the Target abstraction, and it arrives at step 0.4. Until then
- * a caller assembles the list itself, which is honest about what this class
- * currently does.
- *
- * @since  0.2.0
+ * @since  0.4.0
  */
 final class Pipeline
 {
     /**
-     * The generators to run, in order.
+     * A validator that runs for every target, before the target's own.
      *
-     * @var    GeneratorInterface[]
-     * @since  0.2.0
-     */
-    private array $generators;
-
-    /**
-     * The validator to run before generating, if any.
+     * For what must be true of a model wherever it is going. Rules that depend
+     * on the output belong to the target, which knows what it can express.
      *
      * @var    ?ValidatorInterface
-     * @since  0.2.0
+     * @since  0.4.0
      */
     private ?ValidatorInterface $validator;
 
     /**
      * Constructor.
      *
-     * Variadic rather than an array parameter so that PHP itself rejects a list
-     * holding something that is not a generator, at the boundary, with a clear
-     * TypeError. A hand-written check would say the same thing later and add a
-     * branch no test can reach through a typed call.
+     * @param   ?ValidatorInterface  $validator  Checked before any target's own validator.
      *
-     * A caller holding an array spreads it: new Pipeline(...$generators).
-     *
-     * @param   GeneratorInterface  ...$generators  The generators to run, in order.
-     *
-     * @since   0.2.0
+     * @since   0.4.0
      */
-    public function __construct(GeneratorInterface ...$generators)
+    public function __construct(?ValidatorInterface $validator = null)
     {
-        $this->generators = array_values($generators);
-        $this->validator  = null;
+        $this->validator = $validator;
     }
 
     /**
-     * A copy of this pipeline that validates before generating.
+     * Validate a model and run a target's generators over it.
      *
-     * @param   ?ValidatorInterface  $validator  Checked before generating; null to skip.
+     * Both validators run before any generator does: generation either produces
+     * the whole file set or produces nothing. A half-written package is worse
+     * than a refusal, because it looks like it worked.
      *
-     * @return  self  A new pipeline.
-     *
-     * @since   0.2.0
-     */
-    public function withValidator(?ValidatorInterface $validator): self
-    {
-        $clone            = new self(...$this->generators);
-        $clone->validator = $validator;
-
-        return $clone;
-    }
-
-    /**
-     * A copy of this pipeline with a generator appended.
-     *
-     * The pipeline is immutable so that one assembled pipeline can be reused
-     * across runs without a caller's addition leaking into someone else's.
-     *
-     * @param   GeneratorInterface  $generator  The generator to append.
-     *
-     * @return  self  A new pipeline.
-     *
-     * @since   0.2.0
-     */
-    public function with(GeneratorInterface $generator): self
-    {
-        $clone            = new self(...[...$this->generators, $generator]);
-        $clone->validator = $this->validator;
-
-        return $clone;
-    }
-
-    /**
-     * The generators this pipeline will run, in order.
-     *
-     * @return  GeneratorInterface[]  The generators.
-     *
-     * @since   0.2.0
-     */
-    public function generators(): array
-    {
-        return $this->generators;
-    }
-
-    /**
-     * Validate a model and run every applicable generator over it.
-     *
-     * @param   ModelInterface  $model  The source model.
+     * @param   ModelInterface   $model   The source model.
+     * @param   TargetInterface  $target  What to generate it into.
      *
      * @return  FileCollection  The generated files, in memory.
      *
      * @throws  Model\ValidationException  When the model cannot be generated from.
      *
-     * @since   0.2.0
+     * @since   0.4.0
      */
-    public function run(ModelInterface $model): FileCollection
+    public function run(ModelInterface $model, TargetInterface $target): FileCollection
     {
-        // Validation runs first and completely: generation either produces the
-        // whole file set or produces nothing.
         $this->validator?->assertValid($model);
+        $target->validator()?->assertValid($model);
 
         $files = new FileCollection();
 
-        foreach ($this->generators as $generator) {
+        foreach ($target->generators() as $generator) {
             if ($generator->supports($model)) {
                 $generator->generate($model, $files);
             }

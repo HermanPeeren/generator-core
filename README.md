@@ -36,7 +36,10 @@ is the first; targets are pluggable, and need not be Joomla versions at all.
 
 | | |
 |---|---|
-| `Pipeline` | validates a model, runs generators over it, returns the file set |
+| `Pipeline` | validates a model, runs a target's generators, returns the file set |
+| `Target\TargetInterface` | what a model is generated into: which generators, in what order |
+| `Target\Target` | a target that is just a list of generators |
+| `Target\TargetRegistry` | the targets an application offers |
 | `GeneratorInterface` | one concern's contribution; pure, same model in, same bytes out |
 | `Output\FileCollection` | the result, in memory, with the path rules enforced on the way in |
 | `Output\ZipWriter` | that file set as an archive, or written under a directory |
@@ -52,11 +55,20 @@ interpolated into generated source unescaped is the same bug class as SQL
 injection, one target language over; and no template engine solves it, because
 the one that escapes by default escapes for HTML, which is wrong here.
 
+Adding a target is registering one. The pipeline asks the target which
+generators to run and in what order, so it never learns that a second target
+exists:
+
+```php
+$registry = new TargetRegistry($joomla6, $drupal11);
+$files    = (new Pipeline())->run($model, $registry->get('drupal11'));
+```
+
 ## Status
 
-The engine is in place and the quality gates run. Still to come: the Target
-abstraction (step 0.4 of the rework plan), the golden-file test harness (0.5)
-and the Joomla library package (0.6).
+The engine and the target abstraction are in place and the quality gates run.
+Still to come: the golden-file test harness (step 0.5 of the rework plan) and the
+Joomla library package (0.6).
 
 ## Development
 
