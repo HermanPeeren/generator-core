@@ -1,0 +1,98 @@
+name: Release
+
+# Pushing a tag is the whole release procedure. PhpStorm can create and push a
+# tag from the Git menu, so nothing here needs a terminal.
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: zip
+          coverage: none
+
+      # Three versions have to agree, and only one of them is edited by hand.
+      # The tag is checked against the manifest here; updates.xml is checked by
+      # regenerating it below.
+      - name: The tag must match the manifest
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          MANIFEST=$(php -r 'echo trim((string) simplexml_load_file("yepr_gen.xml")->version);')
+          echo "tag: $TAG   manifest: $MANIFEST"
+          if [ "$TAG" != "$MANIFEST" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match the manifest version $MANIFEST. Bump yepr_gen.xml, or tag the version it already carries."
+            exit 1
+          fi
+
+      # updates.xml is what an installed site reads to learn a new version
+      # exists, and it points at a release asset by name. A stale one either
+      # hides this release or offers a download that 404s, and neither shows up
+      # in any test. It is generated, so the check is that regenerating changes
+      # nothing.
+      - name: The update server must be current
+        run: |
+          php build/update-xml.php
+          if ! git diff --quiet; then
+            echo "::error::updates.xml is out of date. Run php build/update-xml.php, commit the result, and re-tag."
+            git --no-pager diff
+            exit 1
+          fi
+
+      - name: Install dependencies
+        run: composer install --prefer-dist --no-progress
+
+      - name: Unit tests
+        run: composer test
+
+      - name: Static analysis
+        run: composer analyse
+
+      - name: Coding standards
+        run: composer cs
+
+      - name: Build the library
+        run: php build/build.php
+
+      # The package is what people install, so its contents are worth asserting
+      # once rather than trusting the build script forever.
+      - name: The package must not carry the test harness or dev dependencies
+        run: |
+          php -r '
+            $zip = new ZipArchive();
+            $zip->open(glob("build/lib_yepr_gen-*.zip")[0]);
+            $bad = [];
+            for ($i = 0; $i < $zip->numFiles; $i++) {
+                $name = $zip->getNameIndex($i);
+                if (str_contains($name, "Core/Testing") || str_contains($name, "vendor/phpunit")
+                    || str_contains($name, "vendor/phpstan") || str_contains($name, "\\")) {
+                    $bad[] = $name;
+                }
+            }
+            if ($bad !== []) {
+                fwrite(STDERR, "Package contains files it should not:\n  " . implode("\n  ", $bad) . "\n");
+                exit(1);
+            }
+            echo "package holds " . $zip->numFiles . " files, none of them unwanted\n";
+          '
+
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            build/lib_yepr_gen-*.zip \
+            --title "Yepr Gen Library $GITHUB_REF_NAME" \
+            --generate-notes
