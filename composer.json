@@ -22,12 +22,12 @@
 	},
 	"autoload": {
 		"psr-4": {
-			"Yepr\\GeneratorCore\\": "src/"
+			"Yepr\\Gen\\": "src/"
 		}
 	},
 	"autoload-dev": {
 		"psr-4": {
-			"Yepr\\GeneratorCore\\Tests\\": "tests/"
+			"Yepr\\Gen\\Core\\Tests\\": "tests/"
 		}
 	},
 	"scripts": {

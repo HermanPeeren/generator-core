@@ -1,18 +1,18 @@
 <?php
 
 /**
- * @package     GeneratorCore
+ * @package     Yepr Gen Library
  *
  * @license     GNU General Public License version 3 or later; see LICENSE.txt
  */
 
 declare(strict_types=1);
 
-namespace Yepr\GeneratorCore;
+namespace Yepr\Gen\Core;
 
-use Yepr\GeneratorCore\Model\ModelInterface;
-use Yepr\GeneratorCore\Model\ValidatorInterface;
-use Yepr\GeneratorCore\Output\FileCollection;
+use Yepr\Gen\Core\Model\ModelInterface;
+use Yepr\Gen\Core\Model\ValidatorInterface;
+use Yepr\Gen\Core\Output\FileCollection;
 
 /**
  * Validates a model and runs every applicable generator over it.

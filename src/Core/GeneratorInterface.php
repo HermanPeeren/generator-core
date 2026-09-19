@@ -1,17 +1,17 @@
 <?php
 
 /**
- * @package     GeneratorCore
+ * @package     Yepr Gen Library
  *
  * @license     GNU General Public License version 3 or later; see LICENSE.txt
  */
 
 declare(strict_types=1);
 
-namespace Yepr\GeneratorCore;
+namespace Yepr\Gen\Core;
 
-use Yepr\GeneratorCore\Model\ModelInterface;
-use Yepr\GeneratorCore\Output\FileCollection;
+use Yepr\Gen\Core\Model\ModelInterface;
+use Yepr\Gen\Core\Output\FileCollection;
 
 /**
  * A generator contributes files for one concern.

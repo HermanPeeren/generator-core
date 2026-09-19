@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Yepr\GeneratorCore\Tests\Unit;
+namespace Yepr\Gen\Core\Tests\Unit;
 
 use PHPUnit\Framework\TestCase;
 

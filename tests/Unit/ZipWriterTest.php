@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Yepr\GeneratorCore\Tests\Unit;
+namespace Yepr\Gen\Core\Tests\Unit;
 
 use PHPUnit\Framework\TestCase;
-use Yepr\GeneratorCore\Output\FileCollection;
-use Yepr\GeneratorCore\Output\ZipWriter;
+use Yepr\Gen\Core\Output\FileCollection;
+use Yepr\Gen\Core\Output\ZipWriter;
 
 /**
  * The writer is the one place the core touches a filesystem, so it is also the

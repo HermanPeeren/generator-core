@@ -13,8 +13,15 @@ ways from this one source tree:
 
 - **`yepr/generator-core`**, a composer package, for development and for use
   outside Joomla.
-- **`lib_yepr_generator`**, an installable Joomla library, so that a Joomla site
-  carries one copy shared by every extension that needs it.
+- **`lib_yepr_gen`**, an installable Joomla library under the `Yepr\Gen`
+  namespace, holding everything those extensions share - this engine and the
+  third-party packages it needs - so a site carries one copy rather than one per
+  extension. Each extension checks for it on install and installs it when
+  missing, the way the Regular Labs and Akeeba libraries work.
+
+Hence `src/Core`: the repository mirrors the library's own layout, so a file sits
+at the path it will occupy under `libraries/yepr_gen/`, and a future shared
+concern becomes a sibling folder rather than a decision.
 
 ## Layers
 

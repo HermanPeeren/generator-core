@@ -2,15 +2,15 @@
 
 declare(strict_types=1);
 
-namespace Yepr\GeneratorCore\Tests\Unit;
+namespace Yepr\Gen\Core\Tests\Unit;
 
 use PHPUnit\Framework\TestCase;
-use Yepr\GeneratorCore\GeneratorInterface;
-use Yepr\GeneratorCore\Model\ModelInterface;
-use Yepr\GeneratorCore\Model\ValidationException;
-use Yepr\GeneratorCore\Model\ValidatorInterface;
-use Yepr\GeneratorCore\Output\FileCollection;
-use Yepr\GeneratorCore\Pipeline;
+use Yepr\Gen\Core\GeneratorInterface;
+use Yepr\Gen\Core\Model\ModelInterface;
+use Yepr\Gen\Core\Model\ValidationException;
+use Yepr\Gen\Core\Model\ValidatorInterface;
+use Yepr\Gen\Core\Output\FileCollection;
+use Yepr\Gen\Core\Pipeline;
 
 final class PipelineTest extends TestCase
 {

@@ -1,7 +1,7 @@
 <?php
 
 /**
- * @package     GeneratorCore
+ * @package     Yepr Gen Library
  * @subpackage  Model
  *
  * @license     GNU General Public License version 3 or later; see LICENSE.txt
@@ -9,7 +9,7 @@
 
 declare(strict_types=1);
 
-namespace Yepr\GeneratorCore\Model;
+namespace Yepr\Gen\Core\Model;
 
 /**
  * Checks a model before anything is generated from it.

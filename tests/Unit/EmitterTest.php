@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Yepr\GeneratorCore\Tests\Unit;
+namespace Yepr\Gen\Core\Tests\Unit;
 
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
-use Yepr\GeneratorCore\Emitter\IniEmitter;
-use Yepr\GeneratorCore\Emitter\PhpEmitter;
-use Yepr\GeneratorCore\Emitter\XmlEmitter;
+use Yepr\Gen\Core\Emitter\IniEmitter;
+use Yepr\Gen\Core\Emitter\PhpEmitter;
+use Yepr\Gen\Core\Emitter\XmlEmitter;
 
 /**
  * The emitters are the project's answer to injection, one target language over.

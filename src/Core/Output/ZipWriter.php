@@ -1,7 +1,7 @@
 <?php
 
 /**
- * @package     GeneratorCore
+ * @package     Yepr Gen Library
  * @subpackage  Output
  *
  * @license     GNU General Public License version 3 or later; see LICENSE.txt
@@ -9,7 +9,7 @@
 
 declare(strict_types=1);
 
-namespace Yepr\GeneratorCore\Output;
+namespace Yepr\Gen\Core\Output;
 
 /**
  * Writes a FileCollection to an installable zip.

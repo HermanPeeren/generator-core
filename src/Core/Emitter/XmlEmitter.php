@@ -1,7 +1,7 @@
 <?php
 
 /**
- * @package     GeneratorCore
+ * @package     Yepr Gen Library
  * @subpackage  Emitter
  *
  * @license     GNU General Public License version 3 or later; see LICENSE.txt
@@ -9,7 +9,7 @@
 
 declare(strict_types=1);
 
-namespace Yepr\GeneratorCore\Emitter;
+namespace Yepr\Gen\Core\Emitter;
 
 /**
  * Escaping for generated XML (manifests and form definitions).

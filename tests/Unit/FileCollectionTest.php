@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Yepr\GeneratorCore\Tests\Unit;
+namespace Yepr\Gen\Core\Tests\Unit;
 
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
-use Yepr\GeneratorCore\Output\FileCollection;
+use Yepr\Gen\Core\Output\FileCollection;
 
 /**
  * The collection is the only thing standing between a malformed model and the

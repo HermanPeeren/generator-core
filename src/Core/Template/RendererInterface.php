@@ -1,7 +1,7 @@
 <?php
 
 /**
- * @package     GeneratorCore
+ * @package     Yepr Gen Library
  * @subpackage  Template
  *
  * @license     GNU General Public License version 3 or later; see LICENSE.txt
@@ -9,7 +9,7 @@
 
 declare(strict_types=1);
 
-namespace Yepr\GeneratorCore\Template;
+namespace Yepr\Gen\Core\Template;
 
 /**
  * Turns a template and a set of variables into text.

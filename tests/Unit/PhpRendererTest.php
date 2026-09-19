@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Yepr\GeneratorCore\Tests\Unit;
+namespace Yepr\Gen\Core\Tests\Unit;
 
 use PHPUnit\Framework\TestCase;
-use Yepr\GeneratorCore\Emitter\PhpEmitter;
-use Yepr\GeneratorCore\Template\PhpRenderer;
+use Yepr\Gen\Core\Emitter\PhpEmitter;
+use Yepr\Gen\Core\Template\PhpRenderer;
 
 final class PhpRendererTest extends TestCase
 {
