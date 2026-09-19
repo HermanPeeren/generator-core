@@ -24,6 +24,9 @@ play at all.
 | **Pipeline** | Validates, then runs a target's generators, and hands back the files. |
 | **FileCollection** | The result: paths mapped to contents, in memory. |
 
+A generator can be written as ordinary PHP, or its mapping can be written as
+data and run by `RuleEngine` - see **Rules** below.
+
 ## A model
 
 A model is whatever describes the thing being generated. The library never looks
@@ -196,6 +199,85 @@ try {
 Zip entry names always use forward slashes. A backslash in an entry becomes a
 literal backslash in a filename on Linux, and the extension then simply fails to
 load.
+
+## Rules
+
+A generator that renders one template per model element is saying the same thing
+over and over in control flow: loop, condition, template name, output path,
+variables. `Yepr\Gen\Core\Rule` lets that be written down instead.
+
+```php
+$rules = RuleSet::fromFile(__DIR__ . '/rules.json');
+
+$engine = new RuleEngine($renderer, $selectors, $derivations);
+
+$log = $engine->run($rules, $model, fn (string $path, string $body) => $files->add($path, $body));
+```
+
+One rule:
+
+```json
+{
+    "id": "entity.table",
+    "for": "entities",
+    "when": [{ "operator": "missing", "path": "isvalueobject" }],
+    "template": "Table.php.twig",
+    "target": "src/Table/{entityName}Table.php",
+    "bind": {
+        "entityName": { "derive": "entityNameUcfirst" },
+        "copyright":  { "path": "manifest.copyright" },
+        "getFK":      { "literal": "" }
+    }
+}
+```
+
+**Selectors** answer "which source elements", **derivations** answer "what is
+this variable's value", and both are closed registries the target fills in:
+
+```php
+$selectors = (new Registry('selector'))
+    ->register('root', fn (object $m): array => [$m])
+    ->register('entities', fn (object $m): array => $m->entities);
+
+$derivations = (new Registry('derivation'))
+    ->register('entityNameUcfirst', fn (object $node): string => ucfirst($node->name));
+```
+
+Closed on purpose. A rule set that could name any callable would be a program
+stored as JSON: no analysis, no debugger, no types. The named derivation is the
+seam - what is a lookup becomes data, what is a computation stays PHP with a
+name and a test.
+
+**Five binding kinds.** `literal`, `path` (from the model root) and `node` (from
+the matched element) are data. `derive` names a function. `fragments` names one
+that yields a list, and renders a smaller template once per entry, joining the
+results - for a file assembled from a template plus N copies of a smaller one.
+
+**Four condition operators**: `has`, `missing`, `equals`, `notEquals`. The model
+usually marks things by presence rather than by value, so `has`/`missing` carry
+most of the weight.
+
+**Target paths** take `{name}` and `{name|filter}`, with `lower`, `upper`,
+`ucfirst` and `lcfirst`. An unbound placeholder throws rather than expanding to
+nothing: a path that quietly loses a segment produces a file in the wrong place,
+which installs, and is then very hard to explain.
+
+**Order is meaning.** Later rules overwrite earlier ones at the same path.
+Consecutive rules over one selector form a block that runs *node-major*: for each
+entity, everything that entity produces, then the next entity. Both orders give
+the same file set - they do not give the same file *contents* when a template
+registers something as it renders, such as a language string.
+
+**Check a rule set without running it.** `RuleSetValidator` reports every
+problem at once: an unregistered selector or derivation, a placeholder nothing
+binds, a target path leaving the package.
+
+```php
+(new RuleSetValidator($selectors, $derivations))->assertValid($rules);
+```
+
+Whether the templates exist and read variables the rules bind is the target's
+own business, since the library has no opinion about a template set.
 
 ## Keeping hand-written code across a regeneration
 

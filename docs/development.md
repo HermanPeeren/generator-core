@@ -14,6 +14,7 @@ src/Core/                    the engine
   Target/                    what a model is generated into
   Output/                    FileCollection, ZipWriter, ProtectedRegionMerger
   Template/                  RendererInterface, TwigRenderer, PhpRenderer
+  Rule/                      a generator's mapping as data, and the engine that runs it
   Emitter/                   PhpEmitter, XmlEmitter, IniEmitter
   Testing/                   the golden-file harness, for consuming projects
 tests/
