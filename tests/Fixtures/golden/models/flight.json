@@ -1,0 +1,8 @@
+{
+	"name": "Flight plan",
+	"fields": {
+		"departure": "string",
+		"passengers": "int",
+		"cancelled": "bool"
+	}
+}

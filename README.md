@@ -49,6 +49,7 @@ is the first; targets are pluggable, and need not be Joomla versions at all.
 | `Template\PhpRenderer` | plain PHP templates, for a consumer that wants no engine |
 | `Emitter\{Php,Xml,Ini}Emitter` | escaping for each target language |
 | `Model\{ModelInterface,ValidatorInterface,ValidationException}` | the model boundary |
+| `Testing\{GoldenFiles,GoldenTestCase}` | pins a generator's whole output against an approved copy |
 
 Two things the emitters exist for, worth stating plainly: a model value
 interpolated into generated source unescaped is the same bug class as SQL
@@ -64,11 +65,18 @@ $registry = new TargetRegistry($joomla6, $drupal11);
 $files    = (new Pipeline())->run($model, $registry->get('drupal11'));
 ```
 
+## Documentation
+
+- [docs/usage.md](docs/usage.md) — generating with the library: models,
+  generators, targets, emitters, templates, protected regions.
+- [docs/development.md](docs/development.md) — how this repository is put
+  together, the two boundaries its tests enforce, golden files, and releasing.
+
 ## Status
 
-The engine and the target abstraction are in place and the quality gates run.
-Still to come: the golden-file test harness (step 0.5 of the rework plan) and the
-Joomla library package (0.6).
+The engine, the target abstraction and the golden-file harness are in place, and
+the quality gates run. Still to come: the Joomla library package (step 0.6 of the
+rework plan).
 
 ## Development
 

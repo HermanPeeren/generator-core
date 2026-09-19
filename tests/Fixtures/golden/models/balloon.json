@@ -1,0 +1,7 @@
+{
+	"name": "Balloon",
+	"fields": {
+		"registration": "string",
+		"capacity": "int"
+	}
+}
