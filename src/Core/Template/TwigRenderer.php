@@ -81,6 +81,12 @@ final class TwigRenderer implements RendererInterface
             'strict_variables' => true,
             'autoescape'       => false,
             'cache'            => $cacheDirectory ?? false,
+            // Twig defaults this to the value of `debug`, which is false - so
+            // with a cache directory and nothing else said, a compiled template
+            // is used forever and editing the source has no effect at all. On a
+            // site that is silent and permanent: the generator keeps producing
+            // last month's output and nothing reports it.
+            'auto_reload'      => true,
         ]);
     }
 

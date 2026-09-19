@@ -128,4 +128,88 @@ final class TwigRendererTest extends TestCase
         $this->assertSame("A:1\n", $a->render('shared', ['v' => 1]));
         $this->assertSame("B:1\n", $b->render('shared', ['v' => 1]));
     }
+
+    /**
+     * An edited template takes effect on the next request.
+     *
+     * Twig defaults `auto_reload` to the value of `debug`, which is false. With
+     * a cache directory and nothing else said, the compiled class is used
+     * forever: the source changes and the output does not. On a site that is
+     * silent and permanent - a generator quietly producing last month's
+     * output, with nothing anywhere to say why. It is how a manifest edit in
+     * Exten-gen reached a Joomla install and did nothing at all.
+     *
+     * **In two processes, because one cannot see it.** Twig names a compiled
+     * class after the template name, and reuses whatever is already declared in
+     * the running process without consulting the cache. That is right for a
+     * request, and it means a single-process test passes whatever `auto_reload`
+     * says. What a site actually does is compile in one request and read in the
+     * next, so that is what this does.
+     */
+    public function testAnEditedTemplateIsPickedUpOnTheNextRequest(): void
+    {
+        $templates = sys_get_temp_dir() . '/yepr-gen-templates-' . bin2hex(random_bytes(4));
+        $cache     = sys_get_temp_dir() . '/yepr-gen-cache-' . bin2hex(random_bytes(4));
+
+        mkdir($templates, 0777, true);
+        mkdir($cache, 0777, true);
+
+        $template = $templates . '/greeting.twig';
+
+        file_put_contents($template, 'first');
+
+        $this->assertSame('first', $this->renderInItsOwnProcess($templates, $cache));
+
+        // A second apart, because Twig compares whole-second mtimes.
+        sleep(1);
+
+        file_put_contents($template, 'second');
+
+        $this->assertSame(
+            'second',
+            $this->renderInItsOwnProcess($templates, $cache),
+            'The cached compilation outlived the template it was compiled from.'
+        );
+
+        unlink($template);
+        rmdir($templates);
+
+        $this->deleteTree($cache);
+    }
+
+    /**
+     * Render one template in a fresh PHP process, as a second request would.
+     */
+    private function renderInItsOwnProcess(string $templates, string $cache): string
+    {
+        $script = \sprintf(
+            'require %s; echo trim(\Yepr\Gen\Core\Template\TwigRenderer::forDirectories(%s, %s)->render(%s));',
+            var_export(\dirname(__DIR__, 2) . '/vendor/autoload.php', true),
+            var_export($templates, true),
+            var_export($cache, true),
+            var_export('greeting.twig', true)
+        );
+
+        exec(\sprintf('php -r %s 2>&1', escapeshellarg($script)), $output, $status);
+
+        $this->assertSame(0, $status, implode("
+", $output));
+
+        return trim(implode("
+", $output));
+    }
+
+    private function deleteTree(string $directory): void
+    {
+        $items = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator($directory, \FilesystemIterator::SKIP_DOTS),
+            \RecursiveIteratorIterator::CHILD_FIRST
+        );
+
+        foreach ($items as $item) {
+            $item->isDir() ? rmdir($item->getPathname()) : unlink($item->getPathname());
+        }
+
+        rmdir($directory);
+    }
 }
