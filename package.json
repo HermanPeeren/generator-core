@@ -1,0 +1,9 @@
+{
+  "name": "yepr-generator-core",
+  "private": true,
+  "description": "Browser-side tests for the shared reference dropdown.",
+  "type": "module",
+  "scripts": {
+    "test": "node --test tests/js/"
+  }
+}

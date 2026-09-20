@@ -10,3 +10,11 @@ parameters:
         - build
 
     treatPhpDocTypesAsCertain: false
+
+    # Joomla is reference material for `src/Joomla`, the half of this library
+    # that is Joomla-shaped on purpose - it supplies the `FormField` the shared
+    # reference dropdown extends. `src/Core` neither imports it nor is allowed
+    # to, and `NoFrameworkDependencyTest` is what says so. /joomla is
+    # git-ignored; CI fetches its own, as the sibling repositories do.
+    scanDirectories:
+        - joomla/libraries

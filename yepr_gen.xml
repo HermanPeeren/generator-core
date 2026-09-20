@@ -2,7 +2,7 @@
 <extension type="library" method="upgrade">
 	<name>Yepr Gen Library</name>
 	<libraryname>yepr_gen</libraryname>
-	<version>0.3.0</version>
+	<version>0.4.0</version>
 	<creationDate>September 2026</creationDate>
 	<author>Herman Peeren</author>
 	<authorEmail>herman@yepr.nl</authorEmail>
@@ -29,6 +29,21 @@
 		<folder>src</folder>
 		<folder>vendor</folder>
 	</files>
+
+	<!--
+		The reference dropdown is half PHP and half browser, and the browser
+		half has to ship somewhere. LibraryAdapter::finaliseInstall() calls
+		parseMedia() like every other adapter, so a library may carry media -
+		it just does not get its asset file registered automatically the way
+		the active component does. A consumer asks for it by name:
+
+			$wa->getRegistry()->addExtensionRegistryFile('lib_yepr_gen');
+			$wa->useScript('lib_yepr_gen.reference');
+	-->
+	<media destination="lib_yepr_gen" folder="media">
+		<filename>joomla.asset.json</filename>
+		<folder>js</folder>
+	</media>
 
 	<updateservers>
 		<server type="extension" name="Yepr Gen Library">https://raw.githubusercontent.com/HermanPeeren/generator-core/main/updates.xml</server>

@@ -120,7 +120,13 @@ final class NoFrameworkDependencyTest extends TestCase
     {
         $offenders = [];
 
-        foreach ([...$this->sourceFiles(), ...$this->phpFilesIn(__DIR__)] as $file) {
+        $everything = [
+            ...$this->sourceFiles(),
+            ...$this->phpFilesIn(\dirname(__DIR__, 2) . '/src/Joomla'),
+            ...$this->phpFilesIn(__DIR__),
+        ];
+
+        foreach ($everything as $file) {
             if (!str_contains((string) file_get_contents($file), 'declare(strict_types=1);')) {
                 $offenders[] = basename($file);
             }
@@ -129,10 +135,54 @@ final class NoFrameworkDependencyTest extends TestCase
         $this->assertSame([], $offenders, 'These do not declare strict types: ' . implode(', ', $offenders));
     }
 
-    /** @return string[] */
+    /**
+     * The engine, which is `src/Core` and not all of `src/`.
+     *
+     * The library has a second half now: `Yepr\Gen\Joomla`, the Joomla-shaped
+     * code that Exten-gen, Meta-gen and Gen-gen share rather than each keeping
+     * a copy of - a `FormField` subclass, to begin with. That half is allowed
+     * to import Joomla; it exists to.
+     *
+     * This is a narrowing rather than a weakening. The rule was always about
+     * the core - it is in the name of every method here - and what it protects
+     * is that a model-to-text transformation runs anywhere. `testTheEngineNeverReachesIntoTheJoomlaHalf`
+     * is the other side of it, and the composer package's consumers are the
+     * proof: they autoload `Yepr\Gen\Joomla` and never load it.
+     *
+     * @return string[]
+     */
     private function sourceFiles(): array
     {
-        return $this->phpFilesIn(\dirname(__DIR__, 2) . '/src');
+        return $this->phpFilesIn(\dirname(__DIR__, 2) . '/src/Core');
+    }
+
+    /**
+     * Nothing in the engine reaches into the Joomla half.
+     *
+     * Without this, scoping the rules above to `src/Core` would be an escape
+     * hatch rather than a boundary: one `use Yepr\Gen\Joomla\...` inside the
+     * core and the framework is back, one indirection further away.
+     */
+    public function testTheEngineNeverReachesIntoTheJoomlaHalf(): void
+    {
+        $offenders = [];
+
+        foreach ($this->sourceFiles() as $file) {
+            if ($this->imports((string) file_get_contents($file), 'Yepr\Gen\Joomla')) {
+                $offenders[] = basename($file);
+            }
+        }
+
+        $this->assertSame([], $offenders, 'These reach out of the core: ' . implode(', ', $offenders));
+    }
+
+    /**
+     * And the Joomla half is really there, so the narrowing has a reason.
+     */
+    public function testTheJoomlaHalfExists(): void
+    {
+        $this->assertDirectoryExists(\dirname(__DIR__, 2) . '/src/Joomla');
+        $this->assertNotSame([], $this->phpFilesIn(\dirname(__DIR__, 2) . '/src/Joomla'));
     }
 
     /** @return string[] */

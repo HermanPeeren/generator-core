@@ -1,0 +1,20 @@
+{
+  "$schema": "https://developer.joomla.org/schemas/json-schema/web_assets.json",
+  "name": "lib_yepr_gen",
+  "version": "0.4.0",
+  "description": "Shared code for the Yepr generator extensions",
+  "license": "GPL-3.0-or-later",
+  "assets": [
+    {
+      "name": "lib_yepr_gen.reference",
+      "type": "script",
+      "uri": "lib_yepr_gen/reference.js",
+      "dependencies": [
+        "core"
+      ],
+      "attributes": {
+        "type": "module"
+      }
+    }
+  ]
+}

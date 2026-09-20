@@ -69,6 +69,16 @@ copyTree($root . '/src', $staging . '/src', static function (string $relative) u
 
 echo '  src/                     copied (' . $skipped . " file(s) skipped from Core/Testing)\n";
 
+// The browser half of the reference dropdown. The manifest's <media> element
+// is what puts it under media/lib_yepr_gen on a site; this is what puts it in
+// the package for the installer to find, and without it the element is defined
+// nowhere and every reference dropdown silently keeps whatever the server
+// rendered.
+copyTree($root . '/media', $staging . '/media', static fn (string $relative): bool => true);
+
+echo '  media/                   copied
+';
+
 copy($manifest, $staging . '/yepr_gen.xml');
 copy($root . '/LICENSE.txt', $staging . '/LICENSE.txt');
 

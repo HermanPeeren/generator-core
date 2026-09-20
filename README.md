@@ -50,11 +50,58 @@ is the first; targets are pluggable, and need not be Joomla versions at all.
 | `Emitter\{Php,Xml,Ini}Emitter` | escaping for each target language |
 | `Model\{ModelInterface,ValidatorInterface,ValidationException}` | the model boundary |
 | `Testing\{GoldenFiles,GoldenTestCase}` | pins a generator's whole output against an approved copy |
+| `Reference\ReferenceIndex` | what a stored model offers a reference dropdown, read from a table |
+| `Reference\ReferenceMarkup` | the markup for one such dropdown, which is the contract with the script |
 
 Two things the emitters exist for, worth stating plainly: a model value
 interpolated into generated source unescaped is the same bug class as SQL
 injection, one target language over; and no template engine solves it, because
 the one that escapes by default escapes for HTML, which is wrong here.
+
+## The library's other half
+
+`Yepr\Gen\Core` imports no framework, ever, and a test enforces it: that is what
+keeps a model-to-text transformation usable from Drupal, Symfony or a plain
+script. `Yepr\Gen\Joomla` is the rest of the library - the Joomla-shaped code
+the generator extensions share rather than each keeping a copy of. Nothing in
+`Core` may reach into it, and a second test enforces that.
+
+| | |
+|---|---|
+| `Joomla\Form\Field\ReferenceField` | `<field type="Reference" objecttype="Concept" />` |
+| `media/js/reference.js` | `<yepr-reference>`, the element that fills the dropdown |
+| `media/js/reference-options.js` | what it should offer, as a function over plain data |
+
+**A reference in a model is an identifier, and a person choosing one needs a
+name.** Computing that once and putting it in the page is what lets the dropdown
+offer an object somebody added a minute ago and has not saved - which cannot be
+done with `<option>` tags rendered from a query, because those can only ever
+describe the database.
+
+Three components edit models this way: Exten-gen a project, Meta-gen a language,
+Gen-gen a generator. What differs between them is a *table* - where each object
+type lives in the stored model, and how the browser finds its rows - and nothing
+else, so the table is data the consumer owns and the mechanism is here. A
+consumer puts the payload in the page and asks for the script:
+
+```php
+$doc->addScriptOptions('yepr.references', ReferenceIndex::fromTable($table)->payload($stored));
+$wa = $doc->getWebAssetManager();
+$wa->getRegistry()->addExtensionRegistryFile('lib_yepr_gen');
+$wa->useScript('lib_yepr_gen.reference');
+```
+
+A library's asset file is not registered automatically the way the active
+component's is, which is the one line above that looks like boilerplate and is
+not.
+
+**The uri in that asset file is `lib_yepr_gen/reference.js`, not
+`lib_yepr_gen/js/reference.js`.** Joomla's relative resolution inserts the `js/`
+folder itself, so the longer spelling is looked for at
+`media/lib_yepr_gen/js/js/reference.js`, is not found, and the asset is dropped
+without a word: no exception, no tag in the head, and every reference dropdown
+keeps whatever the server rendered. It looks like a working form until somebody
+adds a row.
 
 Adding a target is registering one. The pipeline asks the target which
 generators to run and in what order, so it never learns that a second target

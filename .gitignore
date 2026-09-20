@@ -1,4 +1,6 @@
 /vendor/
+/joomla/
+/node_modules/
 /build/*.zip
 /build/tmp/
 /.phpunit.cache/

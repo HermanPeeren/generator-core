@@ -57,6 +57,21 @@ jobs:
       - name: Unit tests
         run: composer test
 
+      - name: Browser-side tests
+        run: composer test-js
+
+      - name: Fetch Joomla as reference material
+        # `src/Joomla` extends Joomla's FormField, so the analyser needs the
+        # class. `src/Core` neither imports it nor may; the suite says so.
+        # /joomla is git-ignored, so CI fetches its own.
+        env:
+          JOOMLA_VERSION: 6.0.0
+        run: |
+          url="https://github.com/joomla/joomla-cms/releases/download/${JOOMLA_VERSION}/Joomla_${JOOMLA_VERSION}-Stable-Full_Package.tar.gz"
+          curl -sSL -o joomla.tar.gz "$url"
+          mkdir -p joomla
+          tar -xzf joomla.tar.gz -C joomla
+
       - name: Static analysis
         run: composer analyse
 
@@ -68,12 +83,23 @@ jobs:
 
       # The package is what people install, so its contents are worth asserting
       # once rather than trusting the build script forever.
-      - name: The package must not carry the test harness or dev dependencies
+      - name: The package must carry the media, and not the test harness
         run: |
           php -r '
             $zip = new ZipArchive();
             $zip->open(glob("build/lib_yepr_gen-*.zip")[0]);
             $bad = [];
+            // The browser half of the reference dropdown is half the contract.
+            // Without it the custom element is defined nowhere and every
+            // reference dropdown quietly keeps whatever the server rendered -
+            // which looks like a working form until somebody adds a row.
+            foreach (["media/joomla.asset.json", "media/js/reference.js"] as $required) {
+                if ($zip->locateName($required) === false) {
+                    fwrite(STDERR, "Package is missing " . $required . "
+");
+                    exit(1);
+                }
+            }
             for ($i = 0; $i < $zip->numFiles; $i++) {
                 $name = $zip->getNameIndex($i);
                 if (str_contains($name, "Core/Testing") || str_contains($name, "vendor/phpunit")
