@@ -24,6 +24,14 @@ jobs:
           extensions: zip
           coverage: none
 
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          # The browser tests use node:test and nothing else, so there is
+          # nothing to install - but the version is pinned rather than left to
+          # whatever the runner image happens to ship.
+          node-version: '20'
+
       # Three versions have to agree, and only one of them is edited by hand.
       # The tag is checked against the manifest here; updates.xml is checked by
       # regenerating it below.
@@ -95,8 +103,7 @@ jobs:
             // which looks like a working form until somebody adds a row.
             foreach (["media/joomla.asset.json", "media/js/reference.js"] as $required) {
                 if ($zip->locateName($required) === false) {
-                    fwrite(STDERR, "Package is missing " . $required . "
-");
+                    fwrite(STDERR, "Package is missing " . $required . "\n");
                     exit(1);
                 }
             }

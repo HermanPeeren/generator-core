@@ -21,6 +21,14 @@ jobs:
           extensions: zip
           coverage: none
 
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          # The browser tests use node:test and nothing else, so there is
+          # nothing to install - but the version is pinned rather than left to
+          # whatever the runner image happens to ship.
+          node-version: '20'
+
       - name: Install dependencies
         run: composer install --prefer-dist --no-progress
 
