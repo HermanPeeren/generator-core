@@ -55,6 +55,39 @@ is the first; targets are pluggable, and need not be Joomla versions at all.
 | `Package\MetalanguagePackage` | what a metalanguage package holds, and where it expects to be unpacked |
 | `Package\PackageManifest` | the language, its version, its root classifier, a hash per file |
 | `Package\PackageReader` | one read back, from an archive or an unpacked tree, with what is wrong with it |
+| `Lionweb\Chunk` | a LionWeb serialization chunk, read: nodes by id, features by metapointer |
+| `Lionweb\LionCoreLanguage` | a chunk holding a language, read into the shape a metalanguage is stored in |
+
+### Speaking LionWeb
+
+[LionWeb](https://lionweb.io) is how a model moves between tools that were not
+written for each other. A chunk holding a *language* and a chunk holding a
+*model written in one* are the same kind of file — the only difference is which
+language the metapointers name — so one reader serves both, and everything that
+knows what `Concept` means sits above it.
+
+`LionCoreLanguage` is the step that was missing. Both LionWeb and this family
+model LionCore M3, and neither could read the other: a chunk is a flat list of
+nodes addressed by metapointer, a stored metalanguage is a Joomla form's shape.
+Converting one to the other puts a foreign language into machinery that already
+exists — Meta-gen generates its forms, a package carries it, Exten-gen imports
+it — rather than down a second path that would have to be kept in step.
+
+Two rules it keeps. **Keys survive**, because a feature's key is what a model
+stores against it and the only thing that can carry a value back out; names are
+for people. And **what it cannot carry, it says** — an interface extending more
+than one interface, a datatype kind with no equivalent, a type from a language
+that is not here.
+
+The builtins are the exception to that last one. `LionCore-builtins` is a
+language in its own right, so a property typed `String` points at a node in
+*that* chunk; a stored metalanguage cannot depend on another language, so the
+builtins a language actually uses are materialised as primitive types of its
+own. That is what a hand-written one does anyway.
+
+It is checked against JCB's language, 1082 nodes derived from a Joomla
+component nobody wrote for this family: 139 language entities, no diagnostics,
+and Meta-gen generates 126 forms from the result.
 
 Two things the emitters exist for, worth stating plainly: a model value
 interpolated into generated source unescaped is the same bug class as SQL
