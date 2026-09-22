@@ -96,6 +96,7 @@ final class PackageTest extends TestCase
             $root,
             MetalanguagePackage::languagePath('Small'),
             MetalanguagePackage::TAG,
+            [['key' => 'c-thing', 'name' => 'Thing'], ['key' => 'c-part', 'name' => 'Part']],
             $hashes,
             MetalanguagePackage::FORMAT,
             '2026-09-22T00:00:00+00:00'
@@ -153,6 +154,39 @@ final class PackageTest extends TestCase
         $this->assertSame('Thing', $manifest->root);
         $this->assertSame('media/yepr_metalanguages/Small/1.0/', $manifest->formRoot);
         $this->assertSame('Small 1.0', $manifest->label());
+    }
+
+    /**
+     * The manifest names the language's concepts, by key and by name.
+     *
+     * Both, because they answer different questions: a name is what a person
+     * picks out of a list, and a key is what a rule should store, so that
+     * renaming a concept in Meta-gen changes what a rule reads as rather than
+     * what it points at. The key is also the half a LionWeb metapointer needs.
+     */
+    public function testTheManifestNamesTheConceptsByKeyAndName(): void
+    {
+        $concepts = PackageReader::fromZip($this->zip())->manifest()->concepts;
+
+        $this->assertSame(
+            [['key' => 'c-thing', 'name' => 'Thing'], ['key' => 'c-part', 'name' => 'Part']],
+            $concepts
+        );
+    }
+
+    /**
+     * A package built before the manifest named concepts still reads.
+     *
+     * An empty list is the right answer for one of those - it holds
+     * classifiers, but nothing in it says which - and refusing a package that
+     * is otherwise complete would be refusing every package made last week.
+     */
+    public function testAManifestWithNoConceptsInItStillReads(): void
+    {
+        $manifest = PackageManifest::fromJson('{"format":1,"name":"Old","version":"1.0"}');
+
+        $this->assertSame([], $manifest->concepts);
+        $this->assertSame('Old', $manifest->name);
     }
 
     /**
@@ -263,6 +297,7 @@ final class PackageTest extends TestCase
             $manifest->formRoot,
             $manifest->language,
             $manifest->tag,
+            $manifest->concepts,
             $manifest->files,
             MetalanguagePackage::FORMAT + 1,
             $manifest->generated

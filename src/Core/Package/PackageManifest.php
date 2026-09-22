@@ -20,6 +20,18 @@ namespace Yepr\Gen\Core\Package;
  * it opens at. Everything else here exists so that a reader can refuse a
  * package instead of half-loading one.
  *
+ * **It names the language's concepts, by key and by name.** A consumer that
+ * has to offer them - Gen-gen, where a rule says which concepts it applies to -
+ * would otherwise have to read the concept model and know how a language is
+ * stored, which is Meta-gen's business and not a thing to teach three
+ * components. The manifest is where a package says what is in it.
+ *
+ * The key travels beside the name because they answer different questions. A
+ * name is what a person picks from a list; a key is what a rule should *store*,
+ * so that renaming a concept in Meta-gen does not silently unpick every rule
+ * written against it. It is also the half a LionWeb metapointer needs, which
+ * is what a chunk exporter would come here for.
+ *
  * **The file list carries a hash each**, which is the only way "the forms in
  * it are the forms the generator produced" is a question with an answer. A
  * reader that merely finds the files it expects cannot tell a truncated zip
@@ -39,6 +51,7 @@ final class PackageManifest
      * @param  string                 $formRoot  Where the package expects to be unpacked, from the site root.
      * @param  string                 $language  The package-relative path of the language file.
      * @param  string                 $tag       The language tag that file is for.
+     * @param  array<int, array{key: string, name: string}>  $concepts  The classifiers the language holds, in the order it declares them.
      * @param  array<string, string>  $files     Package-relative path => sha256 of its contents.
      * @param  int                    $format    The package format version.
      * @param  string                 $generated When this package was built, as an ISO 8601 instant.
@@ -53,6 +66,7 @@ final class PackageManifest
         public readonly string $formRoot,
         public readonly string $language,
         public readonly string $tag,
+        public readonly array $concepts,
         public readonly array $files,
         public readonly int $format = MetalanguagePackage::FORMAT,
         public readonly string $generated = ''
@@ -89,6 +103,18 @@ final class PackageManifest
             }
         }
 
+        // A package built before this field existed simply has none, and an
+        // empty list is the right answer for one: it holds classifiers, but
+        // nothing in it says which. Refusing such a package would be refusing
+        // one that is otherwise complete.
+        $concepts = [];
+
+        foreach (\is_array($data['concepts'] ?? null) ? $data['concepts'] : [] as $concept) {
+            if (\is_array($concept) && \is_string($concept['key'] ?? null) && \is_string($concept['name'] ?? null)) {
+                $concepts[] = ['key' => $concept['key'], 'name' => $concept['name']];
+            }
+        }
+
         return new self(
             self::text($data, 'name'),
             self::text($data, 'key'),
@@ -97,6 +123,7 @@ final class PackageManifest
             self::text($data, 'formRoot'),
             self::text($data, 'language'),
             self::text($data, 'tag'),
+            $concepts,
             $files,
             \is_int($data['format'] ?? null) ? $data['format'] : 0,
             self::text($data, 'generated')
@@ -122,6 +149,7 @@ final class PackageManifest
             'language'  => $this->language,
             'tag'       => $this->tag,
             'generated' => $this->generated,
+            'concepts'  => $this->concepts,
             'files'     => $this->files,
         ];
     }
