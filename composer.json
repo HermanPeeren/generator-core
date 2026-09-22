@@ -37,7 +37,12 @@
 		"analyse": "phpstan analyse",
 		"cs": "phpcs",
 		"cs-fix": "php-cs-fixer fix",
-		"cs-fix-dry": "php-cs-fixer fix --dry-run --diff"
+		"cs-fix-dry": "php-cs-fixer fix --dry-run --diff",
+		"update-xml": "php build/update-xml.php",
+		"build": [
+			"@update-xml",
+			"php build/build.php"
+		]
 	},
 	"config": {
 		"sort-packages": true

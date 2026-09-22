@@ -94,19 +94,78 @@ final class NoFrameworkDependencyTest extends TestCase
         return (bool) preg_match('~^\s*use\s+' . preg_quote($prefix . '\\', '~') . '~mi', $source);
     }
 
+    /**
+     * The code, with every comment taken out of it.
+     *
+     * Tokenised rather than stripped with a regex, because a regex that
+     * removes comments has to understand strings and one that does not will
+     * eat the inside of `'/* '`. `token_get_all` already knows.
+     *
+     * @since  0.5.0
+     */
+    private function codeOf(string $source): string
+    {
+        $code = '';
+
+        foreach (token_get_all($source) as $token) {
+            if (\is_array($token)) {
+                if ($token[0] === \T_COMMENT || $token[0] === \T_DOC_COMMENT) {
+                    continue;
+                }
+
+                $code .= $token[1];
+
+                continue;
+            }
+
+            $code .= $token;
+        }
+
+        return $code;
+    }
+
+    /**
+     * Comments are not code, and this rule reads code.
+     *
+     * It used to read the file whole, and `Package\MetalanguagePackage` is why
+     * it does not: its docblock has to say that Joomla resolves a subform's
+     * `formsource` as `JPATH_ROOT . '/' . $formsource`, because that one fact
+     * is the reason the package declares where it will be unpacked. A rule
+     * that forbids *naming* the thing it forbids using is a rule people work
+     * around by writing a worse comment - and the comment is where the reason
+     * lives.
+     */
     public function testTheCoreCallsNoGlobalCmsEntryPoint(): void
     {
         $offenders = [];
 
         foreach ($this->sourceFiles() as $file) {
-            $source = (string) file_get_contents($file);
+            $code = $this->codeOf((string) file_get_contents($file));
 
-            if (preg_match('/\b(JPATH_[A-Z_]+|JFactory|Factory::get)\b/', $source)) {
+            if (preg_match('/\b(JPATH_[A-Z_]+|JFactory|Factory::get)\b/', $code)) {
                 $offenders[] = basename($file);
             }
         }
 
         $this->assertSame([], $offenders, 'These reach for a CMS global: ' . implode(', ', $offenders));
+    }
+
+    /**
+     * And it still reads the code, which is the half that matters.
+     *
+     * Ignoring comments is one edit away from ignoring everything, and the
+     * rule above would then pass by looking at nothing. This runs it over a
+     * file that does reach for a CMS global and says it is caught.
+     */
+    public function testThatRuleStillSeesARealCall(): void
+    {
+        $offending = '<?php /** JPATH_ROOT is what this must not do. */ $x = JPATH_ROOT . "/a";';
+        $innocent  = '<?php /** JPATH_ROOT, named in a comment and nowhere else. */ $x = 1;';
+
+        $pattern = '/\b(JPATH_[A-Z_]+|JFactory|Factory::get)\b/';
+
+        $this->assertSame(1, preg_match($pattern, $this->codeOf($offending)));
+        $this->assertSame(0, preg_match($pattern, $this->codeOf($innocent)));
     }
 
     /**

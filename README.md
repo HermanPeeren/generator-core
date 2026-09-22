@@ -52,6 +52,9 @@ is the first; targets are pluggable, and need not be Joomla versions at all.
 | `Testing\{GoldenFiles,GoldenTestCase}` | pins a generator's whole output against an approved copy |
 | `Reference\ReferenceIndex` | what a stored model offers a reference dropdown, read from a table |
 | `Reference\ReferenceMarkup` | the markup for one such dropdown, which is the contract with the script |
+| `Package\MetalanguagePackage` | what a metalanguage package holds, and where it expects to be unpacked |
+| `Package\PackageManifest` | the language, its version, its root classifier, a hash per file |
+| `Package\PackageReader` | one read back, from an archive or an unpacked tree, with what is wrong with it |
 
 Two things the emitters exist for, worth stating plainly: a model value
 interpolated into generated source unescaped is the same bug class as SQL
@@ -121,9 +124,16 @@ $files    = (new Pipeline())->run($model, $registry->get('drupal11'));
 
 ## Status
 
-The engine, the target abstraction and the golden-file harness are in place, and
-the quality gates run. Still to come: the Joomla library package (step 0.6 of the
-rework plan).
+0.5.0. The engine, the target abstraction, the golden-file harness, the shared
+reference dropdown and the metalanguage package format are in place, and the
+quality gates run.
+
+`Package\*` arrived at 3.4 of the rework plan, from Meta-gen, which wrote the
+format at 3.3 and kept it while it was the only thing that read one. It moved
+when Exten-gen and Gen-gen became readers too - a format three components agree
+on is a mechanism, which is the same reason the reference dropdown is here. The
+library says what is in a package; what a language *means* stays with each
+consumer, so `PackageReader::model()` hands back decoded JSON and stops.
 
 ## Development
 
