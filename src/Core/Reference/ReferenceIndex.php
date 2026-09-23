@@ -137,6 +137,59 @@ final class ReferenceIndex
     }
 
     /**
+     * The nodes of one type, by their own id.
+     *
+     * `index()` answers what a dropdown needs - an id and something to show a
+     * person - and a selector needs the thing itself: a rule written for the
+     * back-end pages iterates over pages, not over their names. The walk is the
+     * same walk, which is the reason this lives here rather than beside the
+     * caller. A second implementation of "where do the Pages live" is a second
+     * place for the table to be read differently.
+     *
+     * A node with no id is left out for the reason `index()` leaves it out:
+     * nothing can point at it, so nothing can select through it.
+     *
+     * @return array<string, object>  id => the node
+     *
+     * @since  0.8.0
+     */
+    public function nodes(?object $model, string $type): array
+    {
+        if (!isset($this->types[$type])) {
+            return [];
+        }
+
+        $definition = $this->types[$type];
+        $nodes      = [];
+
+        foreach ($this->at($model, $definition['path']) as $node) {
+            if (!$this->matches($node, $definition['when'] ?? [])) {
+                continue;
+            }
+
+            $id = $this->stringAt($node, $definition['idKey']);
+
+            if ($id === '') {
+                continue;
+            }
+
+            $nodes[$id] = $node;
+        }
+
+        return $nodes;
+    }
+
+    /**
+     * Whether this index knows a type by name.
+     *
+     * @since  0.8.0
+     */
+    public function knows(string $type): bool
+    {
+        return isset($this->types[$type]);
+    }
+
+    /**
      * How the client finds each type's rows in the form.
      *
      * The same table, read from the other end. The browser cannot be told
