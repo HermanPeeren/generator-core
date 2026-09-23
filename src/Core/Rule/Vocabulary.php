@@ -69,7 +69,7 @@ final class Vocabulary
      *
      * @return  array<string, array<int, mixed>>
      *
-     * @since   0.8.0
+     * @since   0.9.0
      */
     public function paths(): array
     {
@@ -79,7 +79,7 @@ final class Vocabulary
     /**
      * Whether a selector says what it is rather than only that it exists.
      *
-     * @since   0.8.0
+     * @since   0.9.0
      */
     public function describes(string $selector): bool
     {
