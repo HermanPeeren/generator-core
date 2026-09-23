@@ -138,4 +138,71 @@ final class VocabularyTest extends TestCase
 
         $this->assertSame([], $problems);
     }
+
+    /**
+     * A vocabulary may say what a selector *is*, not only that it exists.
+     *
+     * The source half, added at 3.6. Before it, a vocabulary listed four names
+     * and the meaning of each was a PHP closure in the target's own code,
+     * written against one language's shape - so a generator modelled for
+     * another language could name `entities` and get nothing.
+     */
+    public function testAVocabularyMaySayWhatASelectorIs(): void
+    {
+        $vocabulary = Vocabulary::fromArray([
+            'target'        => 'joomla6',
+            'selectors'     => ['root', 'entities'],
+            'derivations'   => [],
+            'templates'     => [],
+            'selectorPaths' => ['entities' => [['contain' => 'datamodel']]],
+        ]);
+
+        $this->assertTrue($vocabulary->describes('entities'));
+        $this->assertFalse($vocabulary->describes('root'), 'a selector may still be only a name');
+        $this->assertSame([['contain' => 'datamodel']], $vocabulary->paths()['entities']);
+    }
+
+    /**
+     * One written before 3.6 reads exactly as it did.
+     *
+     * A target generating from something other than a modelled language has
+     * nowhere to put a path, so no paths is a real answer rather than a
+     * migration left half done - and it round-trips to the descriptor it had
+     * rather than to one carrying an empty object nobody wrote.
+     */
+    public function testAVocabularyWithNoPathsReadsAndWritesAsItDid(): void
+    {
+        $data = [
+            'target'      => 'joomla6',
+            'selectors'   => ['root'],
+            'derivations' => [],
+            'templates'   => [],
+        ];
+
+        $vocabulary = Vocabulary::fromArray($data);
+
+        $this->assertSame([], $vocabulary->paths());
+        $this->assertArrayNotHasKey('selectorPaths', $vocabulary->toArray());
+    }
+
+    /**
+     * Describing a selector the vocabulary does not offer is refused.
+     *
+     * A path for a selector nothing may name is a path nothing will ever walk,
+     * and the likeliest reason for one is a rename that changed the list and
+     * not the paths beside it.
+     */
+    public function testDescribingASelectorItDoesNotOfferIsRefused(): void
+    {
+        $this->expectException(RuleException::class);
+        $this->expectExceptionMessageMatches('/does not offer/');
+
+        Vocabulary::fromArray([
+            'target'        => 'joomla6',
+            'selectors'     => ['root'],
+            'derivations'   => [],
+            'templates'     => [],
+            'selectorPaths' => ['entities' => [['contain' => 'datamodel']]],
+        ]);
+    }
 }

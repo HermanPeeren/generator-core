@@ -41,6 +41,7 @@ final class Vocabulary
      * @param   string[]  $selectors    Source patterns a rule may be written for.
      * @param   string[]  $derivations  Named functions a binding may call.
      * @param   string[]  $templates    Template identifiers, relative to the template set.
+     * @param   array<string, array<int, mixed>>  $paths  What each selector *is*, for the ones written down.
      *
      * @since   0.3.0
      */
@@ -48,8 +49,41 @@ final class Vocabulary
         public readonly string $target,
         public readonly array $selectors,
         public readonly array $derivations,
-        public readonly array $templates
+        public readonly array $templates,
+        public readonly array $paths = []
     ) {
+    }
+
+    /**
+     * The selectors this vocabulary describes rather than only names.
+     *
+     * The source half, added at 3.6. A vocabulary used to list what a rule may
+     * *say* - four names - and nothing about what those names mean; the meaning
+     * was a PHP closure in the target's own code, written against one language's
+     * shape. A selector that is a path can travel with the vocabulary instead.
+     *
+     * Empty for a target that still registers closures, and that is not a
+     * migration left half done: a target generating from something other than a
+     * modelled language has nowhere to put a path, and `entities` meaning
+     * "whatever this PHP says" is the honest answer for one of those.
+     *
+     * @return  array<string, array<int, mixed>>
+     *
+     * @since   0.8.0
+     */
+    public function paths(): array
+    {
+        return $this->paths;
+    }
+
+    /**
+     * Whether a selector says what it is rather than only that it exists.
+     *
+     * @since   0.8.0
+     */
+    public function describes(string $selector): bool
+    {
+        return isset($this->paths[$selector]);
     }
 
     /**
@@ -100,11 +134,35 @@ final class Vocabulary
             }
         }
 
+        // `selectorPaths` is optional, and its absence is what a target that
+        // still registers closures looks like. A vocabulary written before 3.6
+        // reads exactly as it did.
+        $paths = [];
+
+        foreach (\is_array($data['selectorPaths'] ?? null) ? $data['selectorPaths'] : [] as $name => $steps) {
+            if (\is_string($name) && \is_array($steps)) {
+                $paths[$name] = array_values($steps);
+            }
+        }
+
+        $selectors = array_map(strval(...), array_values($data['selectors']));
+
+        foreach (array_keys($paths) as $described) {
+            if (!\in_array($described, $selectors, true)) {
+                throw new RuleException(
+                    'the vocabulary for ' . $target . ' describes a selector "' . $described
+                    . '" it does not offer. A path for a selector nothing may name is a path'
+                    . ' nothing will ever walk.'
+                );
+            }
+        }
+
         return new self(
             $target,
-            array_map(strval(...), array_values($data['selectors'])),
+            $selectors,
             array_map(strval(...), array_values($data['derivations'])),
-            array_map(strval(...), array_values($data['templates']))
+            array_map(strval(...), array_values($data['templates'])),
+            $paths
         );
     }
 
@@ -190,7 +248,7 @@ final class Vocabulary
      */
     public function toArray(): array
     {
-        return [
+        $data = [
             'target'       => $this->target,
             'selectors'    => $this->selectors,
             'derivations'  => $this->derivations,
@@ -199,6 +257,15 @@ final class Vocabulary
             'bindingKinds' => $this->bindingKinds(),
             'pathFilters'  => $this->pathFilters(),
         ];
+
+        // Left out entirely when there are none, so a target that registers
+        // closures round-trips to the descriptor it had before 3.6 rather than
+        // to one carrying an empty object nobody wrote.
+        if ($this->paths !== []) {
+            $data['selectorPaths'] = $this->paths;
+        }
+
+        return $data;
     }
 
     /**
