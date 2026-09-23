@@ -225,4 +225,45 @@ final class SelectorPathTest extends TestCase
 
         DataSelectors::registry(['entities' => [['descend' => 'datamodel']]]);
     }
+
+    /**
+     * Every node of one concept, which is the selector a person reaches for first.
+     *
+     * A modelled language can offer this without being asked: its reference
+     * table already says where each type lives, so a concept is a selector for
+     * free. `entities` and "every Entity" reach the same nodes here by two
+     * routes - one the target named, one the language gave.
+     */
+    public function testEveryNodeOfAConceptIsASelector(): void
+    {
+        $nodes = SelectorPath::fromArray([['all' => 'Page']])
+            ->walk($this->project(), $this->references());
+
+        $this->assertSame(
+            ['Balloons', 'One balloon', 'Public list'],
+            array_map(static fn (object $n): string => $n->page_name, $nodes)
+        );
+    }
+
+    /**
+     * It can only be the first step, because it ignores the ones before it.
+     */
+    public function testEveryNodeOfAConceptCanOnlyBeTheFirstStep(): void
+    {
+        $this->expectException(RuleException::class);
+        $this->expectExceptionMessageMatches('/only be the first/');
+
+        SelectorPath::fromArray([['contain' => 'pages'], ['all' => 'Page']], 'odd');
+    }
+
+    /**
+     * A concept the language does not have says so.
+     */
+    public function testEveryNodeOfAConceptTheLanguageLacksSaysSo(): void
+    {
+        $this->expectException(RuleException::class);
+        $this->expectExceptionMessageMatches('/does not have/');
+
+        SelectorPath::fromArray([['all' => 'Balloon']])->walk($this->project(), $this->references());
+    }
 }

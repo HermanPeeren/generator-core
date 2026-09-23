@@ -77,6 +77,56 @@ final class Vocabulary
     }
 
     /**
+     * The same vocabulary, seen through a language.
+     *
+     * Every concept becomes a selector: "every Entity" is the thing a person
+     * reaches for first, and a modelled language can offer it without being
+     * asked, because its reference table already says where each type lives.
+     *
+     * **Both sides have to do this or neither can.** Gen-gen offers what a
+     * rule may select and Exten-gen validates what it did select, against
+     * `problems()`, which checks the name against this list. 3.4 had Gen-gen
+     * offer a language's concepts without adding them here - so a rule written
+     * that way was refused as naming a selector the target does not have, and
+     * the offering and the checking disagreed about what a selector is.
+     *
+     * **By name, not by key.** A reference stored in a model keeps a key,
+     * because renaming a concept must not move what a model points at. A
+     * selector is the other case: the reference table is keyed by type name,
+     * `objecttype="Entity"` is a name, and a rule file is meant to be read. A
+     * rule saying `for: c-entity` is a rule nobody can check by eye.
+     *
+     * A concept whose name the target already uses is left alone, so a language
+     * cannot quietly redefine `entities` into something else.
+     *
+     * @param   string[]  $concepts  The language's type names.
+     *
+     * @return  self
+     *
+     * @since   0.10.0
+     */
+    public function withConcepts(array $concepts): self
+    {
+        $selectors = $this->selectors;
+        $paths     = $this->paths;
+
+        foreach ($concepts as $concept) {
+            $name = (string) $concept;
+
+            if ($name === '' || \in_array($name, $selectors, true)) {
+                continue;
+            }
+
+            $selectors[] = $name;
+            $paths[$name] = [[SelectorPath::ALL => $name]];
+        }
+
+        sort($selectors);
+
+        return new self($this->target, $selectors, $this->derivations, $this->templates, $paths);
+    }
+
+    /**
      * Whether a selector says what it is rather than only that it exists.
      *
      * @since   0.9.0

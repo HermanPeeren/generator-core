@@ -205,4 +205,50 @@ final class VocabularyTest extends TestCase
             'selectorPaths' => ['entities' => [['contain' => 'datamodel']]],
         ]);
     }
+
+    /**
+     * A language's concepts become selectors, on both sides at once.
+     *
+     * Gen-gen offers what a rule may select and Exten-gen validates what it
+     * did, and `problems()` checks the name against this list. 3.4 had Gen-gen
+     * offer a language's concepts without adding them here, so a rule written
+     * that way was refused as naming a selector the target does not have - the
+     * offering and the checking disagreeing about what a selector is.
+     */
+    public function testALanguagesConceptsBecomeSelectors(): void
+    {
+        $base = Vocabulary::fromArray([
+            'target'      => 'joomla6',
+            'selectors'   => ['root', 'entities'],
+            'derivations' => [],
+            'templates'   => [],
+        ]);
+
+        $seen = $base->withConcepts(['Entity', 'Page']);
+
+        $this->assertSame(['Entity', 'Page', 'entities', 'root'], $seen->selectors);
+        $this->assertTrue($seen->describes('Page'));
+        $this->assertSame([['all' => 'Page']], $seen->paths()['Page']);
+
+        // And the target keeps its own.
+        $this->assertFalse($seen->describes('root'));
+    }
+
+    /**
+     * A concept cannot quietly redefine a selector the target already has.
+     */
+    public function testAConceptCannotRedefineOneTheTargetAlreadyHas(): void
+    {
+        $base = Vocabulary::fromArray([
+            'target'        => 'joomla6',
+            'selectors'     => ['entities'],
+            'derivations'   => [],
+            'templates'     => [],
+            'selectorPaths' => ['entities' => [['contain' => 'datamodel']]],
+        ]);
+
+        $seen = $base->withConcepts(['entities']);
+
+        $this->assertSame([['contain' => 'datamodel']], $seen->paths()['entities']);
+    }
 }

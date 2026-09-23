@@ -64,6 +64,21 @@ final class SelectorPath
     public const FOLLOW = 'follow';
 
     /**
+     * A step that is every node of one concept, wherever they live.
+     *
+     * The other two walk *from* somewhere; this one does not, which is why it
+     * is a step of its own rather than a path with no steps. "Every Entity in
+     * the project" is the selector a person reaches for first, and a modelled
+     * language can offer it without being asked: the reference table already
+     * says where each type lives, so a concept is a selector for free.
+     *
+     * Only ever the first step of a path, because it ignores what came before.
+     *
+     * @since  0.10.0
+     */
+    public const ALL = 'all';
+
+    /**
      * @param  array<int, array<string, string>>  $steps  In the order they are walked.
      *
      * @since  0.8.0
@@ -101,6 +116,20 @@ final class SelectorPath
 
             if (isset($step[self::CONTAIN]) && \is_string($step[self::CONTAIN])) {
                 $read[] = [self::CONTAIN => $step[self::CONTAIN]];
+
+                continue;
+            }
+
+            if (isset($step[self::ALL]) && \is_string($step[self::ALL])) {
+                if ($position !== 0) {
+                    throw new RuleException(
+                        'Step ' . ($position + 1) . ' of the selector "' . $name
+                        . '" is an "' . self::ALL . '", which ignores the steps before it.'
+                        . ' It can only be the first.'
+                    );
+                }
+
+                $read[] = [self::ALL => $step[self::ALL]];
 
                 continue;
             }
@@ -153,12 +182,45 @@ final class SelectorPath
         $here = [$model];
 
         foreach ($this->steps as $step) {
+            if (isset($step[self::ALL])) {
+                $here = array_values($this->typed($step[self::ALL], $model, $references));
+
+                continue;
+            }
+
             $here = isset($step[self::CONTAIN])
                 ? self::descend($here, $step[self::CONTAIN])
                 : $this->follow($here, $step, $model, $references);
         }
 
         return $here;
+    }
+
+    /**
+     * Every node of one type.
+     *
+     * @return array<string, object>
+     *
+     * @throws RuleException  When the language does not carry the type.
+     *
+     * @since  0.10.0
+     */
+    private function typed(string $type, object $model, ?ReferenceIndex $references): array
+    {
+        if ($references === null) {
+            throw new RuleException(
+                'The selector is every "' . $type
+                . '" and no reference table was given to find them with.'
+            );
+        }
+
+        if (!$references->knows($type)) {
+            throw new RuleException(
+                'The selector is every "' . $type . '", which this language does not have.'
+            );
+        }
+
+        return $references->nodes($model, $type);
     }
 
     /**
