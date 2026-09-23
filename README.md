@@ -56,6 +56,9 @@ is the first; targets are pluggable, and need not be Joomla versions at all.
 | `Package\PackageManifest` | the language, its version, its root classifier, a hash per file |
 | `Package\PackageReader` | one read back, from an archive or an unpacked tree, with what is wrong with it |
 | `Lionweb\Chunk` | a LionWeb serialization chunk, read: nodes by id, features by metapointer |
+| `Lionweb\ChunkBuilder` | one being written, with what a reader would refuse reported before the file exists |
+| `Lionweb\NodeBuilder` | one node of it: properties, containments, references, parent |
+| `Lionweb\MetaPointer` | what a chunk points with - a language, its version and a key |
 | `Lionweb\LionCoreLanguage` | a chunk holding a language, read into the shape a metalanguage is stored in |
 
 ### Speaking LionWeb
@@ -88,6 +91,22 @@ own. That is what a hand-written one does anyway.
 It is checked against JCB's language, 1082 nodes derived from a Joomla
 component nobody wrote for this family: 139 language entities, no diagnostics,
 and Meta-gen generates 126 forms from the result.
+
+`ChunkBuilder` is the other direction, and the thing that lets a model *leave*
+this family rather than only arrive in it. It knows nothing about what it is
+writing — no notion of Concept, of a project, of ER1 — because a writer that
+understood one language would have to be written again for the next. What it
+does know is what a reader will refuse: an id that is not legal, two nodes
+claiming one id, a chunk with no root, a child naming a node that is not here.
+All of those produce a file that looks finished and is not, and `errors()` finds
+them before it exists. A dangling *reference* is reported but allowed — that is
+what a reference into a partition nobody sent looks like.
+
+The two halves are checked against each other rather than each against itself,
+which is how a serialiser normally ends up agreeing with its own
+misunderstanding of the format: what the builder writes, the reader reads back
+the same. And JCB's 1082-node language, taken apart by the reader and rebuilt
+node by node through the builder, comes out identical.
 
 Two things the emitters exist for, worth stating plainly: a model value
 interpolated into generated source unescaped is the same bug class as SQL

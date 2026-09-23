@@ -269,6 +269,33 @@ final class Chunk
     }
 
     /**
+     * The chunk as it was read, so one that came in can go back out.
+     *
+     * Nodes keep the order they arrived in and nothing is normalised: a chunk
+     * read and written unchanged is the same chunk, which is what makes the
+     * reader and the writer testable against each other rather than each only
+     * against itself.
+     *
+     * @return array<string, mixed>
+     *
+     * @since  0.8.0
+     */
+    public function toArray(): array
+    {
+        $languages = [];
+
+        foreach ($this->languages as $language) {
+            $languages[] = ['key' => $language['key'], 'version' => $language['version']];
+        }
+
+        return [
+            'serializationFormatVersion' => $this->formatVersion,
+            'languages'                  => $languages,
+            'nodes'                      => array_values($this->nodes),
+        ];
+    }
+
+    /**
      * The nodes nothing contains, in the order the chunk lists them.
      *
      * @return list<string>  Node ids.
