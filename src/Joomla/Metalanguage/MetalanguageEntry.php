@@ -48,6 +48,7 @@ final class MetalanguageEntry
      * @param  int       $id        Its row id, or 0 for a built-in, which is a row nowhere.
      * @param  array<int, array{key: string, name: string}>  $concepts  The classifiers it holds, which is what a rule may name.
      * @param  string    $rootForm  Where its root form is, when that is not derived from the package layout.
+     * @param  array<int, array{key: string, version: string}>  $dependsOn  The languages it derives from.
      *
      * @since  0.6.0
      */
@@ -61,7 +62,8 @@ final class MetalanguageEntry
         public readonly bool $builtIn = false,
         public readonly int $id = 0,
         public readonly array $concepts = [],
-        public readonly string $rootForm = ''
+        public readonly string $rootForm = '',
+        public readonly array $dependsOn = []
     ) {
     }
 
@@ -83,8 +85,55 @@ final class MetalanguageEntry
             (string) ($row->language_file ?? ''),
             false,
             (int) ($row->id ?? 0),
-            self::conceptsIn((string) ($row->manifest ?? ''))
+            self::conceptsIn((string) ($row->manifest ?? '')),
+            '',
+            self::dependsOnIn((string) ($row->manifest ?? ''))
         );
+    }
+
+    /**
+     * The languages a stored manifest says this one derives from: step 4.5.
+     *
+     * Out of the same text column the concepts come from, and needing no schema
+     * change for the same reason: the whole manifest is on the row. A manifest
+     * written before 4.5 has no `dependsOn` in it, and the answer for one of
+     * those is an empty list - which is not a fallback but the truth, since a
+     * language that says nothing about a parent has none.
+     *
+     * @return array<int, array{key: string, version: string}>
+     *
+     * @since  0.11.0
+     */
+    private static function dependsOnIn(string $manifest): array
+    {
+        if ($manifest === '') {
+            return [];
+        }
+
+        try {
+            $decoded = json_decode($manifest, true, 512, JSON_THROW_ON_ERROR);
+        } catch (\JsonException) {
+            return [];
+        }
+
+        if (!\is_array($decoded) || !\is_array($decoded['dependsOn'] ?? null)) {
+            return [];
+        }
+
+        $parents = [];
+
+        foreach ($decoded['dependsOn'] as $parent) {
+            if (
+                \is_array($parent)
+                && \is_string($parent['key'] ?? null)
+                && \is_string($parent['version'] ?? null)
+                && $parent['key'] !== ''
+            ) {
+                $parents[] = ['key' => $parent['key'], 'version' => $parent['version']];
+            }
+        }
+
+        return $parents;
     }
 
     /**

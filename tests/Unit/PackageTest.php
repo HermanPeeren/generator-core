@@ -306,10 +306,47 @@ final class PackageTest extends TestCase
         $this->assertSame(
             [
                 'This package is in format ' . (MetalanguagePackage::FORMAT + 1)
-                . ' and this component reads format ' . MetalanguagePackage::FORMAT . '.',
+                . ' and this component reads formats ' . MetalanguagePackage::OLDEST_READABLE_FORMAT
+                . ' to ' . MetalanguagePackage::FORMAT . '.',
             ],
             PackageReader::fromZip($this->zip($files))->problems()
         );
+    }
+
+    /**
+     * And one in an older format is read, because the difference is additive.
+     *
+     * 4.5 added `dependsOn` and bumped the format to 2. Refusing a newer format
+     * is the point - a package from a later Meta-gen may use a layout this
+     * reader cannot parse. Refusing an *older* one is the opposite of the
+     * point, and strict equality would have done it: every package ever built
+     * is format 1, including the ER1 Exten-gen ships.
+     */
+    public function testAPackageInAnOlderFormatIsStillRead(): void
+    {
+        $files    = $this->package();
+        $manifest = PackageManifest::fromJson($files->get(MetalanguagePackage::MANIFEST));
+
+        $files->replace(MetalanguagePackage::MANIFEST, (new PackageManifest(
+            $manifest->name,
+            $manifest->key,
+            $manifest->version,
+            $manifest->root,
+            $manifest->formRoot,
+            $manifest->language,
+            $manifest->tag,
+            $manifest->concepts,
+            $manifest->files,
+            MetalanguagePackage::OLDEST_READABLE_FORMAT,
+            $manifest->generated
+        ))->toJson());
+
+        $reader = PackageReader::fromZip($this->zip($files));
+
+        $this->assertSame([], $reader->problems());
+
+        // And it derives from nothing, which is what the absent field means.
+        $this->assertSame([], $reader->manifest()->dependsOn);
     }
 
     public function testSomethingThatIsNotAPackageSaysSo(): void

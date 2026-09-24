@@ -32,6 +32,14 @@ namespace Yepr\Gen\Core\Package;
  * written against it. It is also the half a LionWeb metapointer needs, which
  * is what a chunk exporter would come here for.
  *
+ * **A language may say it derives from another**, as `dependsOn`, which is
+ * LionWeb's own name for the relation - `Language.dependsOn` is in LionCore
+ * already. It is the pair, key and version, because two versions of one
+ * language are two different parents.
+ *
+ * Left out of the JSON entirely when there are none, so a language that derives
+ * from nothing produces the manifest it always did.
+ *
  * **The file list carries a hash each**, which is the only way "the forms in
  * it are the forms the generator produced" is a question with an answer. A
  * reader that merely finds the files it expects cannot tell a truncated zip
@@ -55,6 +63,7 @@ final class PackageManifest
      * @param  array<string, string>  $files     Package-relative path => sha256 of its contents.
      * @param  int                    $format    The package format version.
      * @param  string                 $generated When this package was built, as an ISO 8601 instant.
+     * @param  array<int, array{key: string, version: string}>  $dependsOn  Languages this one derives from.
      *
      * @since  0.5.0
      */
@@ -69,7 +78,8 @@ final class PackageManifest
         public readonly array $concepts,
         public readonly array $files,
         public readonly int $format = MetalanguagePackage::FORMAT,
-        public readonly string $generated = ''
+        public readonly string $generated = '',
+        public readonly array $dependsOn = []
     ) {
     }
 
@@ -115,6 +125,23 @@ final class PackageManifest
             }
         }
 
+        // Each parent is a key *and* a version, because two versions of one
+        // language are two different parents - a language deriving from ER1 1.0
+        // does not inherit what 1.1 added, and saying otherwise would make the
+        // guard on renames meaningless.
+        $dependsOn = [];
+
+        foreach (\is_array($data['dependsOn'] ?? null) ? $data['dependsOn'] : [] as $parent) {
+            if (
+                \is_array($parent)
+                && \is_string($parent['key'] ?? null)
+                && \is_string($parent['version'] ?? null)
+                && $parent['key'] !== ''
+            ) {
+                $dependsOn[] = ['key' => $parent['key'], 'version' => $parent['version']];
+            }
+        }
+
         return new self(
             self::text($data, 'name'),
             self::text($data, 'key'),
@@ -126,7 +153,8 @@ final class PackageManifest
             $concepts,
             $files,
             \is_int($data['format'] ?? null) ? $data['format'] : 0,
-            self::text($data, 'generated')
+            self::text($data, 'generated'),
+            $dependsOn
         );
     }
 
@@ -139,7 +167,7 @@ final class PackageManifest
      */
     public function toArray(): array
     {
-        return [
+        $data = [
             'format'    => $this->format,
             'name'      => $this->name,
             'key'       => $this->key,
@@ -152,6 +180,16 @@ final class PackageManifest
             'concepts'  => $this->concepts,
             'files'     => $this->files,
         ];
+
+        // Left out when there are none, so a language that derives from nothing
+        // produces the manifest it produced before 4.5 rather than one carrying
+        // an empty list nobody wrote. Every other optional field here behaves
+        // the same way, and a package's bytes are hashed.
+        if ($this->dependsOn !== []) {
+            $data['dependsOn'] = $this->dependsOn;
+        }
+
+        return $data;
     }
 
     /**

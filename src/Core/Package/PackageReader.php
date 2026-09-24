@@ -310,9 +310,13 @@ final class PackageReader
 
         $problems = [];
 
-        if ($manifest->format !== MetalanguagePackage::FORMAT) {
+        if (
+            $manifest->format < MetalanguagePackage::OLDEST_READABLE_FORMAT
+            || $manifest->format > MetalanguagePackage::FORMAT
+        ) {
             $problems[] = 'This package is in format ' . $manifest->format
-                . ' and this component reads format ' . MetalanguagePackage::FORMAT . '.';
+                . ' and this component reads formats ' . MetalanguagePackage::OLDEST_READABLE_FORMAT
+                . ' to ' . MetalanguagePackage::FORMAT . '.';
         }
 
         if ($manifest->name === '') {

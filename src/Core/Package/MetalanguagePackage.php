@@ -116,14 +116,35 @@ final class MetalanguagePackage
     public const INSTALL_ROOT = 'media/yepr_metalanguages/';
 
     /**
-     * The version of this format, carried in every manifest.
+     * The version of this format, carried in every manifest and written by this
+     * version of the library.
      *
      * A reader refuses a number it does not know rather than guessing at a
      * layout, because a package that half-loads is a language with holes in it.
      *
      * @since  0.5.0
      */
-    public const FORMAT = 1;
+    public const FORMAT = 2;
+
+    /**
+     * The oldest format this library still reads.
+     *
+     * Refusing a *newer* format is the point: a package from a later Meta-gen
+     * may use a layout this reader cannot parse, and guessing at one is how a
+     * language arrives with holes in it. Refusing an older one is the opposite
+     * of the point, and 4.5 nearly did it - bumping the number to 2 for
+     * `dependsOn` would have made this reader reject every package ever built,
+     * including the ER1 that Exten-gen ships.
+     *
+     * 1 and 2 differ by that one field, and its absence means "derives from
+     * nothing", which is true of every format 1 package. So both are readable,
+     * and this constant is what the next format change has to argue with:
+     * raising it is a deliberate statement that the difference is no longer
+     * additive.
+     *
+     * @since  0.11.0
+     */
+    public const OLDEST_READABLE_FORMAT = 1;
 
     /**
      * What a version becomes when the language does not give one.

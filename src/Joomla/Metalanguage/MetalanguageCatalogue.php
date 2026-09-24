@@ -73,6 +73,22 @@ final class MetalanguageCatalogue
     }
 
     /**
+     * What a language derives from, walked against this table: step 4.5.
+     *
+     * The walk itself is `Ancestry`, which takes a resolver and touches no
+     * database - the same split as `MetalanguageInstaller`, and for the same
+     * reason: everything that can go wrong with an ancestry goes wrong in the
+     * walk, and a class that needs a `DatabaseInterface` is a class this
+     * library's suite will not exercise.
+     *
+     * @since  0.11.0
+     */
+    public function ancestry(): Ancestry
+    {
+        return new Ancestry($this->forRecord(...));
+    }
+
+    /**
      * The language a stored record says it is written in.
      *
      * A binding naming a language that is not here any more falls back to the

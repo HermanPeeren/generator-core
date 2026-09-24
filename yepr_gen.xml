@@ -2,7 +2,7 @@
 <extension type="library" method="upgrade">
 	<name>Yepr Gen Library</name>
 	<libraryname>yepr_gen</libraryname>
-	<version>0.10.0</version>
+	<version>0.11.0</version>
 	<creationDate>September 2026</creationDate>
 	<author>Herman Peeren</author>
 	<authorEmail>herman@yepr.nl</authorEmail>
