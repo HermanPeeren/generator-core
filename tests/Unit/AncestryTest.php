@@ -345,6 +345,79 @@ final class AncestryTest extends TestCase
     }
 
     /**
+     * What a stored row says is what the guard compares against.
+     *
+     * **This is the test that was missing, and the bug it would have caught was
+     * real.** `AncestryCheck` compares a package against the *stored manifest*
+     * of its parent, because by the time a child is imported the parent's zip
+     * is long gone. `MetalanguageEntry::fromRow()` is what "the stored
+     * manifest" means by then - and it normalised every concept to a key and a
+     * name, dropping the features on the way, so the feature half of the guard
+     * compared a full list against nothing and passed everything.
+     *
+     * The unit suite was green, the browser was not: a language that renamed
+     * `Entity.entity_name` imported cleanly. That is the whole reason there is
+     * a browser gate.
+     */
+    public function testAStoredManifestKeepsTheFeaturesTheGuardNeeds(): void
+    {
+        $entry = MetalanguageEntry::fromRow((object) [
+            'lang_key' => 'ER1',
+            'version'  => '1.1',
+            'name'     => 'ER1',
+            'manifest' => json_encode([
+                'concepts' => [
+                    [
+                        'key'      => 'c-entity',
+                        'name'     => 'Entity',
+                        'features' => [['key' => 'f-name', 'name' => 'entity_name']],
+                    ],
+                ],
+            ], JSON_THROW_ON_ERROR),
+        ]);
+
+        $this->assertSame(
+            [['key' => 'c-entity', 'name' => 'Entity', 'features' => [['key' => 'f-name', 'name' => 'entity_name']]]],
+            $entry->concepts
+        );
+
+        // And the guard, handed that, refuses the rename it is there to refuse.
+        $problems = AncestryCheck::problems(
+            $entry->concepts,
+            [[
+                'key'      => 'c-entity',
+                'name'     => 'Entity',
+                'features' => [['key' => 'f-name', 'name' => 'title']],
+            ]]
+        );
+
+        $this->assertCount(1, $problems);
+    }
+
+    /**
+     * A row whose manifest predates features says nothing about them.
+     *
+     * Absent stays absent through the row, because the guard reads that as
+     * "this package does not say" and skips the check. A normalisation that
+     * turned it into an empty list would refuse every child of every language
+     * imported before today.
+     */
+    public function testAStoredManifestWithoutFeaturesStaysWithout(): void
+    {
+        $entry = MetalanguageEntry::fromRow((object) [
+            'lang_key' => 'ER1',
+            'version'  => '1.0',
+            'name'     => 'ER1',
+            'manifest' => json_encode([
+                'concepts' => [['key' => 'c-entity', 'name' => 'Entity']],
+            ], JSON_THROW_ON_ERROR),
+        ]);
+
+        $this->assertSame([['key' => 'c-entity', 'name' => 'Entity']], $entry->concepts);
+        $this->assertArrayNotHasKey('features', $entry->concepts[0]);
+    }
+
+    /**
      * A little family of languages, resolvable the way a catalogue resolves one.
      *
      * @param  array<string, array<int, array{key: string, version: string}>>  $graph

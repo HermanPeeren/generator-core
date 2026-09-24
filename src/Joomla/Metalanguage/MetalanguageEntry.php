@@ -168,9 +168,40 @@ final class MetalanguageEntry
         $concepts = [];
 
         foreach ($decoded['concepts'] as $concept) {
-            if (\is_array($concept) && \is_string($concept['key'] ?? null) && \is_string($concept['name'] ?? null)) {
-                $concepts[] = ['key' => $concept['key'], 'name' => $concept['name']];
+            if (!\is_array($concept) || !\is_string($concept['key'] ?? null) || !\is_string($concept['name'] ?? null)) {
+                continue;
             }
+
+            $read = ['key' => $concept['key'], 'name' => $concept['name']];
+
+            // The features, when the manifest carries them. Dropping them here
+            // is what made the feature half of `AncestryCheck` do nothing for
+            // its first hour: the guard compares a package against the stored
+            // manifest of its parent, and this is what "the stored manifest"
+            // means by the time it gets there.
+            //
+            // Kept as absent when absent, because the guard reads that as "this
+            // package does not say" and an empty list as "this concept has
+            // none" - a normalisation that turned one into the other would turn
+            // every old package into an unchecked one, or every old package
+            // into a refusal.
+            if (\is_array($concept['features'] ?? null)) {
+                $features = [];
+
+                foreach ($concept['features'] as $feature) {
+                    if (
+                        \is_array($feature)
+                        && \is_string($feature['key'] ?? null)
+                        && \is_string($feature['name'] ?? null)
+                    ) {
+                        $features[] = ['key' => $feature['key'], 'name' => $feature['name']];
+                    }
+                }
+
+                $read['features'] = $features;
+            }
+
+            $concepts[] = $read;
         }
 
         return $concepts;
