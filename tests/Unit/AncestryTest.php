@@ -185,6 +185,166 @@ final class AncestryTest extends TestCase
     }
 
     /**
+     * A concept that keeps its features is fine, and may add more.
+     */
+    public function testAChildMayAddFeatures(): void
+    {
+        $parent = [[
+            'key'      => 'c-entity',
+            'name'     => 'Entity',
+            'features' => [['key' => 'f-name', 'name' => 'entity_name']],
+        ]];
+
+        $child = [[
+            'key'      => 'c-entity',
+            'name'     => 'Entity',
+            'features' => [
+                ['key' => 'f-name', 'name' => 'entity_name'],
+                ['key' => 'f-colour', 'name' => 'colour'],
+            ],
+        ]];
+
+        $this->assertSame([], AncestryCheck::problems($parent, $child));
+    }
+
+    /**
+     * A feature the child dropped is refused: bindings walk through it.
+     *
+     * The same silence as a dropped concept, one level down. A rule binds a
+     * variable by a path through the model, and a path that resolves to nothing
+     * renders an empty string into a generated file - no error, no warning, a
+     * file that looks finished.
+     */
+    public function testAChildThatDropsAFeatureIsRefused(): void
+    {
+        $problems = AncestryCheck::problems(
+            [[
+                'key'      => 'c-entity',
+                'name'     => 'Entity',
+                'features' => [
+                    ['key' => 'f-name', 'name' => 'entity_name'],
+                    ['key' => 'f-id', 'name' => 'entity_id'],
+                ],
+            ]],
+            [[
+                'key'      => 'c-entity',
+                'name'     => 'Entity',
+                'features' => [['key' => 'f-name', 'name' => 'entity_name']],
+            ]]
+        );
+
+        $this->assertCount(1, $problems);
+        $this->assertStringContainsString('Entity.entity_id', $problems[0]);
+        $this->assertStringContainsString('resolve to nothing', $problems[0]);
+    }
+
+    /**
+     * And one that renames it, which is again the confusing half.
+     *
+     * The key is still there, so nothing about the stored data moved. The path
+     * moved, because a path walks by name.
+     */
+    public function testAChildThatRenamesAFeatureIsRefusedToo(): void
+    {
+        $problems = AncestryCheck::problems(
+            [[
+                'key'      => 'c-entity',
+                'name'     => 'Entity',
+                'features' => [['key' => 'f-name', 'name' => 'entity_name']],
+            ]],
+            [[
+                'key'      => 'c-entity',
+                'name'     => 'Entity',
+                'features' => [['key' => 'f-name', 'name' => 'title']],
+            ]]
+        );
+
+        $this->assertCount(1, $problems);
+        $this->assertStringContainsString('Entity.entity_name', $problems[0]);
+        $this->assertStringContainsString('"title"', $problems[0]);
+        $this->assertStringContainsString('walk into nothing', $problems[0]);
+    }
+
+    /**
+     * A parent that says nothing about features is not checked for them.
+     *
+     * That is every package built before this, and refusing on it would mean
+     * nothing could derive from a language imported before today. An absent
+     * list and an empty one are different things, which is the whole reason the
+     * manifest writes `features: []` for a concept that genuinely has none.
+     */
+    public function testAParentThatListsNoFeaturesIsNotCheckedForThem(): void
+    {
+        $this->assertSame(
+            [],
+            AncestryCheck::problems(
+                [['key' => 'c-entity', 'name' => 'Entity']],
+                [['key' => 'c-entity', 'name' => 'Entity']]
+            )
+        );
+
+        // But one that says it has none, and a child that agrees, is checked
+        // and passes - which is what makes the distinction observable.
+        $this->assertSame(
+            [],
+            AncestryCheck::problems(
+                [['key' => 'c-entity', 'name' => 'Entity', 'features' => []]],
+                [['key' => 'c-entity', 'name' => 'Entity', 'features' => []]]
+            )
+        );
+    }
+
+    /**
+     * A child that drops the whole concept is reported once, not twice.
+     *
+     * The concept is gone, so its features are gone with it, and listing each
+     * of them would bury the one sentence that matters under ten that follow
+     * from it.
+     */
+    public function testAMissingConceptIsNotAlsoReportedFeatureByFeature(): void
+    {
+        $problems = AncestryCheck::problems(
+            [[
+                'key'      => 'c-entity',
+                'name'     => 'Entity',
+                'features' => [
+                    ['key' => 'f-name', 'name' => 'entity_name'],
+                    ['key' => 'f-id', 'name' => 'entity_id'],
+                ],
+            ]],
+            []
+        );
+
+        $this->assertCount(1, $problems);
+    }
+
+    /**
+     * A feature that moved to a supertype has not been removed.
+     *
+     * The manifest carries *effective* features - inherited included - because
+     * the hierarchy is not in there and a child that tidied its inheritance has
+     * broken nothing. Meta-gen resolves that before writing; this is the shape
+     * that arrives here when it has.
+     */
+    public function testAFeatureInheritedRatherThanDeclaredStillCounts(): void
+    {
+        $parent = [[
+            'key'      => 'c-property',
+            'name'     => 'Property',
+            'features' => [['key' => 'f-name', 'name' => 'field_name']],
+        ]];
+
+        // The child declares it on a supertype; what reaches here is the
+        // effective list, which still has it.
+        $child = [
+            ['key' => 'c-field', 'name' => 'Field', 'features' => [['key' => 'f-name', 'name' => 'field_name']]],
+            ['key' => 'c-property', 'name' => 'Property', 'features' => [['key' => 'f-name', 'name' => 'field_name']]],
+        ];
+
+        $this->assertSame([], AncestryCheck::problems($parent, $child));
+    }
+
+    /**
      * A little family of languages, resolvable the way a catalogue resolves one.
      *
      * @param  array<string, array<int, array{key: string, version: string}>>  $graph

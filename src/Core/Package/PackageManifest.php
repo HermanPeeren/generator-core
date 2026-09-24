@@ -27,6 +27,11 @@ namespace Yepr\Gen\Core\Package;
  * components. The manifest is where a package says what is in it.
  *
  * The key travels beside the name because they answer different questions. A
+ * Each concept may carry the features it holds, by the same pair and for the
+ * same reasons - a stored model keys its data by the feature's *name*, a rule's
+ * path walks by name too, and the key is what says a rename is a rename rather
+ * than a removal and an addition.
+ *
  * name is what a person picks from a list; a key is what a rule should *store*,
  * so that renaming a concept in Meta-gen does not silently unpick every rule
  * written against it. It is also the half a LionWeb metapointer needs, which
@@ -59,7 +64,8 @@ final class PackageManifest
      * @param  string                 $formRoot  Where the package expects to be unpacked, from the site root.
      * @param  string                 $language  The package-relative path of the language file.
      * @param  string                 $tag       The language tag that file is for.
-     * @param  array<int, array{key: string, name: string}>  $concepts  The classifiers the language holds, in the order it declares them.
+     * @param  array<int, array{key: string, name: string, features?: array<int, array{key: string, name: string}>}>  $concepts
+     *         The classifiers the language holds, in the order it declares them, each with the features it carries.
      * @param  array<string, string>  $files     Package-relative path => sha256 of its contents.
      * @param  int                    $format    The package format version.
      * @param  string                 $generated When this package was built, as an ISO 8601 instant.
@@ -120,9 +126,35 @@ final class PackageManifest
         $concepts = [];
 
         foreach (\is_array($data['concepts'] ?? null) ? $data['concepts'] : [] as $concept) {
-            if (\is_array($concept) && \is_string($concept['key'] ?? null) && \is_string($concept['name'] ?? null)) {
-                $concepts[] = ['key' => $concept['key'], 'name' => $concept['name']];
+            if (!\is_array($concept) || !\is_string($concept['key'] ?? null) || !\is_string($concept['name'] ?? null)) {
+                continue;
             }
+
+            $read = ['key' => $concept['key'], 'name' => $concept['name']];
+
+            // The features each concept carries, added at 4.5's second half.
+            // Absent in a manifest written before it, and absent is not the
+            // same as none: a concept that declares no features writes an empty
+            // list, and one from an older package writes nothing at all. The
+            // guard tells them apart, because it can only check what it was
+            // told.
+            if (\is_array($concept['features'] ?? null)) {
+                $features = [];
+
+                foreach ($concept['features'] as $feature) {
+                    if (
+                        \is_array($feature)
+                        && \is_string($feature['key'] ?? null)
+                        && \is_string($feature['name'] ?? null)
+                    ) {
+                        $features[] = ['key' => $feature['key'], 'name' => $feature['name']];
+                    }
+                }
+
+                $read['features'] = $features;
+            }
+
+            $concepts[] = $read;
         }
 
         // Each parent is a key *and* a version, because two versions of one

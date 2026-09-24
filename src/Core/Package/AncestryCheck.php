@@ -35,11 +35,21 @@ namespace Yepr\Gen\Core\Package;
  * keeping its key breaks the rules without breaking the data, which is the more
  * confusing of the two and the one a key-only check would miss.
  *
- * Nothing here looks at features. A child may add a property to a concept, and
- * a parent's rule that never names it is unaffected; a child that *removed* one
- * would break a parent's binding, and catching that needs the parent's rule
- * file rather than its manifest. That is a real gap and it is named in the
- * plan rather than half-closed here.
+ * **Features are checked the same way, when the parent says what it has.** A
+ * child may add a property and a parent's rule that never names it is
+ * unaffected; a child that *removed* one breaks every binding whose path walks
+ * through it, and that is the same silence one level down - a binding that
+ * resolves to nothing renders an empty string into a generated file.
+ *
+ * The features compared are *effective* ones, inherited included, so a child
+ * that moved a property up to a supertype has not removed it. Meta-gen resolves
+ * that before writing the manifest, because the hierarchy is not in there.
+ *
+ * A parent whose manifest lists no features for a concept is not checked for
+ * them. That is a package written before 4.5's second half, and "this package
+ * does not say" is not the same as "this concept has none" - which is why an
+ * empty list and an absent one are different things here, and why a manifest
+ * writes `features: []` for a concept that genuinely has none.
  *
  * @since  0.11.0
  */
@@ -62,15 +72,17 @@ final class AncestryCheck
      */
     public static function problems(array $parent, array $child, string $label = 'the language it derives from'): array
     {
-        $byKey  = [];
-        $byName = [];
+        $byKey       = [];
+        $byName      = [];
+        $childByKey  = [];
 
         foreach ($child as $concept) {
             $key  = (string) ($concept['key'] ?? '');
             $name = (string) ($concept['name'] ?? '');
 
             if ($key !== '') {
-                $byKey[$key] = $name;
+                $byKey[$key]      = $name;
+                $childByKey[$key] = $concept;
             }
 
             if ($name !== '') {
@@ -101,6 +113,84 @@ final class AncestryCheck
             if ($name !== '' && $byKey[$key] !== $name) {
                 $problems[] = $label . ' calls ' . $key . ' "' . $name . '" and this one calls it "'
                     . $byKey[$key] . '": rules written for it select by name, so they would select nothing.';
+
+                continue;
+            }
+
+            $problems = array_merge($problems, self::featureProblems(
+                $concept,
+                $childByKey[$key] ?? [],
+                $label,
+                $name ?: $key
+            ));
+        }
+
+        return $problems;
+    }
+
+    /**
+     * What the child breaks about one concept's features.
+     *
+     * @param   array<string, mixed>  $parent  The parent's concept.
+     * @param   array<string, mixed>  $child   The child's concept of the same key.
+     * @param   string                $label   How to name the parent.
+     * @param   string                $on      How to name the concept.
+     *
+     * @return  string[]
+     *
+     * @since   0.13.0
+     */
+    private static function featureProblems(array $parent, array $child, string $label, string $on): array
+    {
+        if (!\is_array($parent['features'] ?? null)) {
+            // The parent's manifest does not say, which is what a package built
+            // before this looks like. Nothing to compare against, and refusing
+            // on that would refuse deriving from every language imported before
+            // today.
+            return [];
+        }
+
+        $byKey  = [];
+        $byName = [];
+
+        foreach (\is_array($child['features'] ?? null) ? $child['features'] : [] as $feature) {
+            $key  = (string) ($feature['key'] ?? '');
+            $name = (string) ($feature['name'] ?? '');
+
+            if ($key !== '') {
+                $byKey[$key] = $name;
+            }
+
+            if ($name !== '') {
+                $byName[$name] = $key;
+            }
+        }
+
+        $problems = [];
+
+        foreach ($parent['features'] as $feature) {
+            $key  = (string) ($feature['key'] ?? '');
+            $name = (string) ($feature['name'] ?? '');
+
+            if ($name === '') {
+                continue;
+            }
+
+            // By key when there is one, because that is what tells a rename
+            // from a removal - and a rename is the more confusing failure, the
+            // data still being where it was.
+            if ($key !== '' && isset($byKey[$key])) {
+                if ($byKey[$key] !== $name) {
+                    $problems[] = $on . '.' . $name . ' in ' . $label . ' is called "' . $byKey[$key]
+                        . '" here: a path through it walks by name, so it would walk into nothing.';
+                }
+
+                continue;
+            }
+
+            if (!isset($byName[$name])) {
+                $problems[] = $label . ' has ' . $on . '.' . $name
+                    . ' and this one does not: a binding that walks through it would resolve to nothing.';
             }
         }
 
