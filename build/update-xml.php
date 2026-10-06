@@ -35,6 +35,35 @@ $download = \sprintf(
     $version
 );
 
+// The checksum Joomla checks the download against; without one it warns that
+// the integrity of the file cannot be validated. Only the release workflow can
+// know it: the archive is built there, and one built on another machine differs
+// in timestamps and line endings even when its contents do not. So the workflow
+// runs this with --checksum after the build and commits the result. Without the
+// flag the committed checksum is kept for as long as it describes the same
+// download, so regenerating stays a no-op between releases, and dropped when
+// the version moves on, because it belongs to the previous archive.
+$sha512 = null;
+
+if (\in_array('--checksum', $argv, true)) {
+    $archive = $root . '/build/' . basename($download);
+
+    if (!is_file($archive)) {
+        fwrite(STDERR, "--checksum hashes the built archive, and there is none at {$archive}.\n");
+        exit(1);
+    }
+
+    $sha512 = hash_file('sha512', $archive);
+} elseif (is_file($root . '/updates.xml')) {
+    $committed = simplexml_load_file($root . '/updates.xml');
+
+    if ($committed !== false && trim((string) $committed->update->downloads->downloadurl) === $download) {
+        $sha512 = trim((string) $committed->update->sha512) ?: null;
+    }
+}
+
+$checksum = $sha512 === null ? '' : "\t\t<sha512>{$sha512}</sha512>\n";
+
 $updates = <<<XML
 <?xml version="1.0" encoding="utf-8"?>
 <!--
@@ -51,7 +80,7 @@ $updates = <<<XML
 		<downloads>
 			<downloadurl type="full" format="zip">{$download}</downloadurl>
 		</downloads>
-		<maintainer>Herman Peeren</maintainer>
+{$checksum}		<maintainer>Herman Peeren</maintainer>
 		<maintainerurl>https://yepr.nl</maintainerurl>
 		<targetplatform name="joomla" version="6\..*"/>
 		<php_minimum>8.3</php_minimum>
@@ -62,4 +91,4 @@ XML;
 
 file_put_contents($root . '/updates.xml', $updates);
 
-echo "updates.xml written for {$library} {$version}\n";
+echo "updates.xml written for {$library} {$version}" . ($sha512 === null ? ', without a checksum' : ', with its checksum') . "\n";

@@ -233,3 +233,12 @@ Three versions must agree at release time: the tag, `yepr_gen.xml`, and the
 so the check is that regenerating it produces no diff. A stale update server
 either hides a release or offers a download that 404s, and neither shows up in
 any test.
+
+Once the release is published, the workflow writes the download's SHA-512 into
+`updates.xml` with `php build/update-xml.php --checksum` and commits that to
+`main` itself. Joomla checks a downloaded update against it and warns when
+there is none. It has to come from the workflow because a zip built on another
+machine has different timestamps and line endings, so its hash does not match.
+Pull `main` after a release, before the next version bump. Without `--checksum`
+the script keeps a committed checksum while the download stays the same, and
+drops it when the version changes.

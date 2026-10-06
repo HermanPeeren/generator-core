@@ -129,3 +129,29 @@ jobs:
             build/lib_yepr_gen-*.zip \
             --title "Yepr Gen Library $GITHUB_REF_NAME" \
             --generate-notes
+
+      # Joomla checks a downloaded update against the checksum in updates.xml,
+      # and warns when there is none. Only this run can write it: the archive
+      # was built here, and one built anywhere else differs in timestamps and
+      # line endings. updates.xml is served from main, so that is where the
+      # checksum is committed - once the release exists, so a site is never told
+      # to expect a file that is not there yet.
+      - name: Write the checksum into updates.xml on main
+        run: |
+          git fetch --depth=1 origin main
+          git checkout -B main FETCH_HEAD
+          MAIN=$(php -r 'echo trim((string) simplexml_load_file("yepr_gen.xml")->version);')
+          if [ "v$MAIN" != "$GITHUB_REF_NAME" ]; then
+            echo "::warning::main is at $MAIN by now, not $GITHUB_REF_NAME, so the checksum of this release was not written. The download is still installable; Joomla only warns."
+            exit 0
+          fi
+          php build/update-xml.php --checksum
+          if git diff --quiet -- updates.xml; then
+            echo "updates.xml on main already carries this checksum."
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add updates.xml
+          git commit -m "Checksum for the $GITHUB_REF_NAME download"
+          git push origin main
