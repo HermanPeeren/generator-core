@@ -190,6 +190,83 @@ final class PackageTest extends TestCase
     }
 
     /**
+     * A feature says whether it holds one value or a list.
+     *
+     * The shape a model stores depends on it - one group under the name, or
+     * numbered ones under it - so a reader turning a chunk back into a stored
+     * model asks here rather than parsing the generated forms.
+     */
+    public function testAFeatureCanSayItHoldsAList(): void
+    {
+        $manifest = PackageManifest::fromJson((string) json_encode([
+            'format'   => MetalanguagePackage::FORMAT,
+            'name'     => 'Shapes',
+            'version'  => '1.0',
+            'concepts' => [[
+                'key'      => 'c-thing',
+                'name'     => 'Thing',
+                'features' => [
+                    ['key' => 'f-rows', 'name' => 'rows', 'multiple' => true],
+                    ['key' => 'f-one', 'name' => 'one', 'multiple' => false],
+                    ['key' => 'f-plain', 'name' => 'plain'],
+                ],
+            ]],
+        ]));
+
+        $this->assertSame(
+            [
+                ['key' => 'f-rows', 'name' => 'rows', 'multiple' => true],
+                ['key' => 'f-one', 'name' => 'one', 'multiple' => false],
+                ['key' => 'f-plain', 'name' => 'plain'],
+            ],
+            $manifest->concepts[0]['features']
+        );
+    }
+
+    /**
+     * Saying nothing is not saying false.
+     *
+     * Every package built before format 4 is silent about multiplicity, and a
+     * reader that took silence for "one value" would flatten every repeating
+     * group in every one of them. The key stays absent so the difference
+     * survives the read.
+     */
+    public function testAFeatureFromAnOlderPackageSaysNothingAboutMultiplicity(): void
+    {
+        $manifest = PackageManifest::fromJson((string) json_encode([
+            'format'   => 3,
+            'name'     => 'Older',
+            'version'  => '1.0',
+            'concepts' => [[
+                'key'      => 'c-thing',
+                'name'     => 'Thing',
+                'features' => [['key' => 'f-rows', 'name' => 'rows']],
+            ]],
+        ]));
+
+        $this->assertArrayNotHasKey('multiple', $manifest->concepts[0]['features'][0]);
+    }
+
+    /**
+     * And a value that is not a boolean is not an answer either.
+     */
+    public function testAMultipleThatIsNotABooleanIsIgnored(): void
+    {
+        $manifest = PackageManifest::fromJson((string) json_encode([
+            'format'   => MetalanguagePackage::FORMAT,
+            'name'     => 'Odd',
+            'version'  => '1.0',
+            'concepts' => [[
+                'key'      => 'c-thing',
+                'name'     => 'Thing',
+                'features' => [['key' => 'f-rows', 'name' => 'rows', 'multiple' => 'true']],
+            ]],
+        ]));
+
+        $this->assertArrayNotHasKey('multiple', $manifest->concepts[0]['features'][0]);
+    }
+
+    /**
      * The model comes back decoded, and no further.
      *
      * A `stdClass` rather than a model type, which is the seam this move is

@@ -27,15 +27,22 @@ namespace Yepr\Gen\Core\Package;
  * components. The manifest is where a package says what is in it.
  *
  * The key travels beside the name because they answer different questions. A
+ * name is what a person picks from a list; a key is what a rule should *store*,
+ * so that renaming a concept in Meta-gen does not silently unpick every rule
+ * written against it. It is also the half a LionWeb metapointer needs, which
+ * is what a chunk exporter would come here for.
+ *
  * Each concept may carry the features it holds, by the same pair and for the
  * same reasons - a stored model keys its data by the feature's *name*, a rule's
  * path walks by name too, and the key is what says a rename is a rename rather
  * than a removal and an addition.
  *
- * name is what a person picks from a list; a key is what a rule should *store*,
- * so that renaming a concept in Meta-gen does not silently unpick every rule
- * written against it. It is also the half a LionWeb metapointer needs, which
- * is what a chunk exporter would come here for.
+ * **A feature may say whether it holds one value or a list**, which is what
+ * decides the shape a model stores under it: one group under its own name, or
+ * numbered ones - `field0`, `field1` - under a repeating one. The generated
+ * form has always known, as `multiple="true"`; the manifest did not, so a
+ * reader coming the other way - a LionWeb chunk back into a stored model - had
+ * to parse 126 form files to learn something the language already knew.
  *
  * **A language may say it derives from another**, as `dependsOn`, which is
  * LionWeb's own name for the relation - `Language.dependsOn` is in LionCore
@@ -64,7 +71,7 @@ final class PackageManifest
      * @param  string                 $formRoot  Where the package expects to be unpacked, from the site root.
      * @param  string                 $language  The package-relative path of the language file.
      * @param  string                 $tag       The language tag that file is for.
-     * @param  array<int, array{key: string, name: string, features?: array<int, array{key: string, name: string}>}>  $concepts
+     * @param  array<int, array{key: string, name: string, features?: array<int, array{key: string, name: string, multiple?: bool}>}>  $concepts
      *         The classifiers the language holds, in the order it declares them, each with the features it carries.
      * @param  array<string, string>  $files     Package-relative path => sha256 of its contents.
      * @param  int                    $format    The package format version.
@@ -143,12 +150,26 @@ final class PackageManifest
 
                 foreach ($concept['features'] as $feature) {
                     if (
-                        \is_array($feature)
-                        && \is_string($feature['key'] ?? null)
-                        && \is_string($feature['name'] ?? null)
+                        !\is_array($feature)
+                        || !\is_string($feature['key'] ?? null)
+                        || !\is_string($feature['name'] ?? null)
                     ) {
-                        $features[] = ['key' => $feature['key'], 'name' => $feature['name']];
+                        continue;
                     }
+
+                    $read_feature = ['key' => $feature['key'], 'name' => $feature['name']];
+
+                    // Whether the feature holds one value or a list, added at
+                    // format 4 and read the same way features themselves were:
+                    // absent is not false. A manifest written before this says
+                    // nothing about multiplicity, and a consumer that read
+                    // silence as "one" would shape every repeating group of
+                    // every older language wrongly.
+                    if (\is_bool($feature['multiple'] ?? null)) {
+                        $read_feature['multiple'] = $feature['multiple'];
+                    }
+
+                    $features[] = $read_feature;
                 }
 
                 $read['features'] = $features;

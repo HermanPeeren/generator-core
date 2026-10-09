@@ -124,7 +124,7 @@ final class MetalanguagePackage
      *
      * @since  0.5.0
      */
-    public const FORMAT = 3;
+    public const FORMAT = 4;
 
     /**
      * The oldest format this library still reads.
@@ -136,12 +136,13 @@ final class MetalanguagePackage
      * `dependsOn` would have made this reader reject every package ever built,
      * including the ER1 that Exten-gen ships.
      *
-     * 1, 2 and 3 differ by two fields - `dependsOn` on the language, `features`
-     * on each concept - and an absent one is meaningful in both cases: "derives
-     * from nothing", and "this package does not say". So all three are
-     * readable, and this constant is what the next format change has to argue
-     * with: raising it is a deliberate statement that the difference is no
-     * longer additive.
+     * 1 to 4 differ by three fields - `dependsOn` on the language, `features`
+     * on each concept, `multiple` on each feature - and an absent one is
+     * meaningful in every case: "derives from nothing", "this package does not
+     * say which features", and "this package does not say which are lists". So
+     * all four are readable, and this constant is what the next format change
+     * has to argue with: raising it is a deliberate statement that the
+     * difference is no longer additive.
      *
      * @since  0.11.0
      */
