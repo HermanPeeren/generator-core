@@ -199,6 +199,110 @@ final class Chunk
     }
 
     /**
+     * Everything a node carries under one of the three buckets, by key.
+     *
+     * The rest of this class answers "what is under *this* key", which is what
+     * a reader that already knows the language asks. A reader of a *model*
+     * knows nothing of the sort: the keys are whichever features the language
+     * happens to define, so it has to go the other way and ask what the node
+     * has. Doing that by reaching into `nodes()` would put this format's
+     * spelling in a second class.
+     *
+     * Properties come back as key => value, containments and references as
+     * key => list of ids, in the order the chunk lists them. A bucket the node
+     * does not carry is an empty array, which is the same answer as carrying
+     * it empty - a distinction the serialisation does not reliably make.
+     *
+     * @return array<string, string|null>
+     *
+     * @since  0.16.0
+     */
+    public function propertiesOf(string $id): array
+    {
+        $found = [];
+
+        foreach ($this->nodes[$id]['properties'] ?? [] as $property) {
+            $key = $property['property']['key'] ?? null;
+
+            if (\is_string($key) && $key !== '') {
+                $value = $property['value'] ?? null;
+
+                $found[$key] = $value === null ? null : (string) $value;
+            }
+        }
+
+        return $found;
+    }
+
+    /**
+     * @return array<string, list<string>>
+     *
+     * @since  0.16.0
+     */
+    public function containmentsOf(string $id): array
+    {
+        $found = [];
+
+        foreach ($this->nodes[$id]['containments'] ?? [] as $containment) {
+            $key = $containment['containment']['key'] ?? null;
+
+            if (\is_string($key) && $key !== '') {
+                $found[$key] = $this->children($id, $key);
+            }
+        }
+
+        return $found;
+    }
+
+    /**
+     * References, with both halves of each target rather than just the id.
+     *
+     * {@see targets()} answers "which nodes does this point at", and drops a
+     * target that names none. That is right for a reference inside one chunk
+     * and wrong for one that leaves it: LionWeb lets a target carry a null
+     * `reference` and a `resolveInfo` instead, which is what a reference into
+     * a partition nobody sent looks like - and the identity is in the half
+     * that gets dropped.
+     *
+     * JCB's Hello World is the case. Its fields point at fieldtypes that live
+     * in another repository, so every one of those targets is
+     * `{"resolveInfo": "<the GUID>", "reference": null}`. A reader taking only
+     * the id gets nothing, and the field arrives with no type.
+     *
+     * @return array<string, list<array{reference: string|null, resolveInfo: string|null}>>
+     *
+     * @since  0.16.0
+     */
+    public function referencesOf(string $id): array
+    {
+        $found = [];
+
+        foreach ($this->nodes[$id]['references'] ?? [] as $reference) {
+            $key = $reference['reference']['key'] ?? null;
+
+            if (!\is_string($key) || $key === '') {
+                continue;
+            }
+
+            $targets = [];
+
+            foreach ($reference['targets'] ?? [] as $target) {
+                $node    = $target['reference'] ?? null;
+                $resolve = $target['resolveInfo'] ?? null;
+
+                $targets[] = [
+                    'reference'   => \is_string($node) && $node !== '' ? $node : null,
+                    'resolveInfo' => \is_string($resolve) && $resolve !== '' ? $resolve : null,
+                ];
+            }
+
+            $found[$key] = $targets;
+        }
+
+        return $found;
+    }
+
+    /**
      * A boolean property. LionWeb serialises these as the strings "true" and
      * "false", so an absent one is the caller's default rather than false.
      */
