@@ -311,7 +311,18 @@ final class LionwebInstanceTest extends TestCase
 
         $stored = $model->toStoredModel();
 
-        $this->assertSame(['title', InstanceModel::MARKER], array_keys($stored));
+        // The feature that was defined, and nothing in place of the one that
+        // was not. The reserved keys are the reader's own and are not of
+        // interest here.
+        $this->assertSame(
+            ['title'],
+            array_values(array_diff(array_keys($stored), [
+                InstanceModel::MARKER,
+                InstanceModel::ID,
+                InstanceModel::LANGUAGE,
+                InstanceModel::LANGUAGE_VERSION,
+            ]))
+        );
         $this->assertSame(['UNKNOWN_FEATURE'], array_column($model->diagnostics(), 'code'));
     }
 

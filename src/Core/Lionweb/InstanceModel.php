@@ -56,6 +56,31 @@ final class InstanceModel
      */
     public const MARKER = 'LIonWeb_key';
 
+    /**
+     * What the stored shape puts on each group to say which node it was.
+     *
+     * A form has no use for it. The way back does: 38 of the 43 reference
+     * targets in JCB's Hello World point at another node *in the same chunk*,
+     * by id, so a writer that invented fresh ids would break every one of
+     * them. The id is the only thing in a chunk that is nobody's to choose.
+     *
+     * @since  0.17.0
+     */
+    public const ID = 'LIonWeb_id';
+
+    /**
+     * What the root carries to say which language the model is written in.
+     *
+     * Not the same as the metalanguage's key: JCB's language calls itself
+     * `jcb` and the package built from it is called `JCB`, and a metapointer
+     * has to say the former. Recording it here is what lets a model go back
+     * out without being told again what it already came in knowing.
+     *
+     * @since  0.17.0
+     */
+    public const LANGUAGE = 'LIonWeb_language';
+    public const LANGUAGE_VERSION = 'LIonWeb_languageVersion';
+
     /** @var list<array{severity: string, code: string, message: string}> */
     private array $diagnostics = [];
 
@@ -128,7 +153,18 @@ final class InstanceModel
             return [];
         }
 
-        return $this->node($root);
+        $model = $this->node($root);
+
+        // On the root only, because one model is written in one language and
+        // repeating that on every node would be noise a person editing the
+        // thing has to scroll past.
+        $language = $this->chunk->nodes()[$root]['classifier']['language'] ?? '';
+        $version  = $this->chunk->nodes()[$root]['classifier']['version'] ?? '';
+
+        $model[self::LANGUAGE]         = \is_string($language) ? $language : '';
+        $model[self::LANGUAGE_VERSION] = \is_string($version) ? $version : '';
+
+        return $model;
     }
 
     /**
@@ -298,6 +334,7 @@ final class InstanceModel
         }
 
         $row[self::MARKER] = $concept;
+        $row[self::ID]     = $id;
 
         return $row;
     }
