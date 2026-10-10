@@ -224,6 +224,52 @@ final class PackageTest extends TestCase
     }
 
     /**
+     * What the language calls itself, beside what the package is called.
+     *
+     * `key` is this package's own name in a path - `JCB`. `lionwebKey` is what
+     * a metapointer has to carry - `jcb`. They differ by convention, and
+     * before format 5 only the first was recorded, so a consumer matched the
+     * two by ignoring case and a language whose key was not a case-variant of
+     * its name could not be found at all.
+     */
+    public function testAManifestSaysWhatTheLanguageCallsItself(): void
+    {
+        $manifest = PackageManifest::fromJson((string) json_encode([
+            'format'     => 5,
+            'name'       => 'JCB',
+            'key'        => 'JCB',
+            'lionwebKey' => 'jcb',
+            'version'    => '6.2.0',
+        ]));
+
+        $this->assertSame('JCB', $manifest->key);
+        $this->assertSame('jcb', $manifest->lionwebKey);
+
+        // And survives being written back out.
+        $this->assertSame('jcb', $manifest->toArray()['lionwebKey']);
+    }
+
+    /**
+     * Absent means the package does not say, not that there is no key.
+     *
+     * Every package built before format 5 is silent about it, and ER1 and
+     * Testlang are among them. A reader that read silence as an empty key
+     * would refuse every one.
+     */
+    public function testAPackageFromBeforeFormatFiveSaysNothingAboutTheLanguageKey(): void
+    {
+        $manifest = PackageManifest::fromJson((string) json_encode([
+            'format'  => 4,
+            'name'    => 'ER1',
+            'key'     => 'ER1',
+            'version' => '1.3',
+        ]));
+
+        $this->assertSame('', $manifest->lionwebKey);
+        $this->assertArrayNotHasKey('lionwebKey', $manifest->toArray());
+    }
+
+    /**
      * Saying nothing is not saying false.
      *
      * Every package built before format 4 is silent about multiplicity, and a

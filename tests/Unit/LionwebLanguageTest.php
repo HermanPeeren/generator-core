@@ -197,6 +197,14 @@ final class LionwebLanguageTest extends TestCase
         $this->assertSame('Demo', $model['name']);
         $this->assertSame('1.0', $model['version']);
         $this->assertSame('Language', $model['LIonWeb_key']);
+
+        // What it calls itself, which is not what it is called. Every entity
+        // below it has kept its key since the beginning; the language's own
+        // was dropped, and that is the only key a metapointer has to carry -
+        // so a model written in this language could be read and nothing
+        // afterwards could say which language to write it back out in. JCB's
+        // pair is the same shape: the language is `jcb`, the name is `JCB`.
+        $this->assertSame('demo', $model['key']);
     }
 
     /**

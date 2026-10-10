@@ -177,6 +177,13 @@ final class LionCoreLanguage
         return [
             'id'               => '0',
             'name'             => $this->chunk->property($language, self::NAME) ?? '',
+            // What the language calls itself, which is not what it is named.
+            // Every entity below here has kept its key since the beginning and
+            // the language did not, so the one key a metapointer actually has
+            // to carry was the one thing thrown away: a model written in this
+            // language could be read, and nothing afterwards could say which
+            // language to write it back out in.
+            'key'              => $this->chunk->property($language, self::KEY) ?? '',
             'version'          => $this->chunk->property($language, self::VERSION) ?? '',
             'LIonWeb_key'      => self::MARKERS['language'],
             'languageEntities' => $entities,

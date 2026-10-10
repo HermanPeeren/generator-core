@@ -77,6 +77,7 @@ final class PackageManifest
      * @param  int                    $format    The package format version.
      * @param  string                 $generated When this package was built, as an ISO 8601 instant.
      * @param  array<int, array{key: string, version: string}>  $dependsOn  Languages this one derives from.
+     * @param  string                 $lionwebKey  What the language calls itself in a LionWeb metapointer.
      *
      * @since  0.5.0
      */
@@ -92,7 +93,18 @@ final class PackageManifest
         public readonly array $files,
         public readonly int $format = MetalanguagePackage::FORMAT,
         public readonly string $generated = '',
-        public readonly array $dependsOn = []
+        public readonly array $dependsOn = [],
+        /**
+         * Not `$key`, which is this package's own name in a path - `JCB`.
+         * This is what the language calls itself, which a metapointer has to
+         * carry exactly: `jcb`. The two differ by convention rather than by
+         * accident, and before format 5 nothing recorded the second, so a
+         * consumer had to guess that one was the other in a different case.
+         *
+         * Empty in a package built before format 5, which means "this package
+         * does not say" and never "the language has no key".
+         */
+        public readonly string $lionwebKey = ''
     ) {
     }
 
@@ -207,7 +219,8 @@ final class PackageManifest
             $files,
             \is_int($data['format'] ?? null) ? $data['format'] : 0,
             self::text($data, 'generated'),
-            $dependsOn
+            $dependsOn,
+            self::text($data, 'lionwebKey')
         );
     }
 
@@ -240,6 +253,10 @@ final class PackageManifest
         // the same way, and a package's bytes are hashed.
         if ($this->dependsOn !== []) {
             $data['dependsOn'] = $this->dependsOn;
+        }
+
+        if ($this->lionwebKey !== '') {
+            $data['lionwebKey'] = $this->lionwebKey;
         }
 
         return $data;
