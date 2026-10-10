@@ -38,7 +38,8 @@ use Yepr\Gen\Core\Rule\PathReader;
  *
  * ```
  * 'Concept' => [
- *     'path'      => ['languageEntities'],   repeating groups to walk
+ *     'path'      => ['languageEntities'],   repeating groups to walk; a step may be
+ *                                            dotted through single groups first
  *     'idKey'     => 'key',
  *     'nameKey'   => 'name',
  *     'parentKey' => 'entity_id',            optional, for a scoped child type
@@ -255,6 +256,16 @@ final class ReferenceIndex
      * why a condition like `classifier.classifier_type` is a plain dotted read
      * and not another step here.
      *
+     * **A step can be dotted, for a repeating group inside a single one.** A
+     * state machine contained once by each entity, holding a repeating list of
+     * states, stores those at `datamodel0.state_machine.states`: two groups, but
+     * only the second one repeats. So `['datamodel', 'state_machine.states']`
+     * walks the entities, reads straight through each one's state machine, and
+     * fans out its states - everything before the last dot is read the way a
+     * condition is read, and only the last segment is a group of rows. A step
+     * without a dot is the one-segment case of that, which is why a table
+     * written before dotted steps existed reads exactly as it did.
+     *
      * @param  string[]  $path
      *
      * @return list<object>
@@ -273,11 +284,13 @@ final class ReferenceIndex
             $next = [];
 
             foreach ($current as $one) {
-                if (!property_exists($one, $step) || !\is_object($one->{$step})) {
+                $group = PathReader::read($one, $step);
+
+                if (!\is_object($group)) {
                     continue;
                 }
 
-                $next = array_merge($next, array_values((array) $one->{$step}));
+                $next = array_merge($next, array_values((array) $group));
             }
 
             $current = array_values(array_filter($next, \is_object(...)));

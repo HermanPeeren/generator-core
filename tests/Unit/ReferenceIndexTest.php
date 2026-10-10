@@ -119,6 +119,52 @@ final class ReferenceIndexTest extends TestCase
     }
 
     /**
+     * A dotted step reads through a single group to the repeating one inside.
+     *
+     * A single containment is stored as the group itself, so the states of an
+     * entity's one state machine are at `datamodel0.state_machine.states`, and
+     * a step for each group would try to fan out the state machine as if it
+     * were a list of rows. An entity with no state machine contributes nothing.
+     */
+    public function testADottedStepReadsThroughASingleGroupToTheRowsInside(): void
+    {
+        $model = (object) [
+            'datamodel' => (object) [
+                'datamodel0' => (object) [
+                    'entity_id'     => 'e1',
+                    'state_machine' => (object) [
+                        'states' => (object) [
+                            'states0' => (object) ['state_id' => 's1', 'state_name' => 'Draft'],
+                            'states1' => (object) ['state_id' => 's2', 'state_name' => 'Posted'],
+                        ],
+                    ],
+                ],
+                'datamodel1' => (object) ['entity_id' => 'e2'],
+                'datamodel2' => (object) [
+                    'entity_id'     => 'e3',
+                    'state_machine' => (object) [
+                        'states' => (object) [
+                            'states0' => (object) ['state_id' => 's3', 'state_name' => 'Open'],
+                        ],
+                    ],
+                ],
+            ],
+        ];
+
+        $index = ReferenceIndex::fromTable([
+            'State' => [
+                'path'    => ['datamodel', 'state_machine.states'],
+                'idKey'   => 'state_id',
+                'nameKey' => 'state_name',
+                'client'  => ['selector' => 'stateName', 'nameToken' => 'state_name', 'idToken' => 'state_id'],
+            ],
+        ]);
+
+        $this->assertSame(['Draft', 'Posted', 'Open'], $this->names($index->index($model)['State']));
+        $this->assertSame(['s1', 's2', 's3'], array_keys($index->nodes($model, 'State')));
+    }
+
+    /**
      * A child carries its parent, so a scoped dropdown can filter on it.
      */
     public function testAChildTypeCarriesWhichParentItBelongsTo(): void
