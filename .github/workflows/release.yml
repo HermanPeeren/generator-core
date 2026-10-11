@@ -73,7 +73,7 @@ jobs:
         # class. `src/Core` neither imports it nor may; the suite says so.
         # /joomla is git-ignored, so CI fetches its own.
         env:
-          JOOMLA_VERSION: 6.0.0
+          JOOMLA_VERSION: 6.1.4
         run: |
           url="https://github.com/joomla/joomla-cms/releases/download/${JOOMLA_VERSION}/Joomla_${JOOMLA_VERSION}-Stable-Full_Package.tar.gz"
           curl -sSL -o joomla.tar.gz "$url"
