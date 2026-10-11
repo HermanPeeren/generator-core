@@ -199,8 +199,9 @@ plugin calls after an install - and checks five things:
 5. the renderer actually renders.
 
 It refuses a site that already has the library, and restores everything on exit
-including on failure - the namespace cache is backed up and put back. Verified
-against Joomla 6.1.3.
+including on failure - the namespace cache is backed up and put back. The site
+must have been opened in a browser once, so that Joomla has written its
+namespace cache. Verified against Joomla 6.1.4, with library 0.19.0.
 
 Installing by hand through the Joomla interface proves the same thing, but only
 once, and only where somebody remembers to do it.
