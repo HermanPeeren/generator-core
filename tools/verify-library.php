@@ -37,16 +37,26 @@ if (!is_file($site . '/libraries/src/Version.php')) {
     exit(1);
 }
 
+// By default, the package of the version this checkout is: the one in
+// yepr_gen.xml. Not the newest zip in build/ - that used to be chosen by sorting
+// file names as strings, which put 0.9.0 after 0.19.0 and verified a library
+// ten releases old while reporting a pass. Older builds stay in build/, so
+// "whatever is there" is never a safe default.
 if ($zip === null) {
-    $found = glob(\dirname(__DIR__) . '/build/lib_yepr_gen-*.zip') ?: [];
+    $manifest = simplexml_load_file(\dirname(__DIR__) . '/yepr_gen.xml');
+    $version  = $manifest === false ? '' : trim((string) $manifest->version);
 
-    if ($found === []) {
-        fwrite(STDERR, "No package in build/. Run php build/build.php first.\n");
+    if ($version === '') {
+        fwrite(STDERR, "Cannot read the version from yepr_gen.xml.\n");
         exit(1);
     }
 
-    sort($found, SORT_STRING);
-    $zip = (string) end($found);
+    $zip = \dirname(__DIR__) . '/build/lib_yepr_gen-' . $version . '.zip';
+
+    if (!is_file($zip)) {
+        fwrite(STDERR, "No package for {$version} in build/. Run php build/build.php first, or pass the zip.\n");
+        exit(1);
+    }
 }
 
 $libraryDir  = $site . '/libraries/yepr_gen';
