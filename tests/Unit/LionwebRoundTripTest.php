@@ -105,7 +105,9 @@ final class LionwebRoundTripTest extends TestCase
                     ['book-k-chapter' => ['ch-1', 'ch-2']],
                     'book-k-author',
                     [
-                        ['resolveInfo' => null, 'reference' => 'auth-1'],
+                        // Both halves, the way a LionWeb tool writes a
+                        // reference to a named node in the same chunk.
+                        ['resolveInfo' => 'Herbert', 'reference' => 'auth-1'],
                         ['resolveInfo' => 'someone-elsewhere', 'reference' => null],
                     ],
                     'lib-1'
@@ -140,7 +142,10 @@ final class LionwebRoundTripTest extends TestCase
                     ['key' => 'book-k-author', 'name' => 'author', 'multiple' => true],
                 ]),
                 $concept('chapter', [['key' => 'chapter-k-heading', 'name' => 'heading']]),
-                $concept('author', [['key' => 'author-k-name', 'name' => 'name']]),
+                $concept('author', [
+                    ['key' => 'author-k-name', 'name' => 'name'],
+                    ['key' => 'author-k-guid', 'name' => 'guid'],
+                ]),
             ],
         ]));
     }
@@ -223,10 +228,56 @@ final class LionwebRoundTripTest extends TestCase
     }
 
     /**
-     * A reference inside the chunk stays a node id; one outside stays a hint.
+     * Every reference target in a chunk, in order, as reference and hint.
      *
-     * The distinction the writer cannot make until every node exists, and the
-     * one that decides whether a reference still points anywhere.
+     * @param  array<string, mixed>  $chunk
+     *
+     * @return list<array{reference: mixed, resolveInfo: mixed}>
+     */
+    private function targets(array $chunk): array
+    {
+        $targets = [];
+
+        foreach ($chunk['nodes'] as $node) {
+            foreach ($node['references'] as $reference) {
+                foreach ($reference['targets'] as $target) {
+                    $targets[] = [
+                        'reference'   => $target['reference'] ?? null,
+                        'resolveInfo' => $target['resolveInfo'] ?? null,
+                    ];
+                }
+            }
+        }
+
+        return $targets;
+    }
+
+    /**
+     * The fixture with a different author, and the hint the book gives it.
+     *
+     * @param  array<string, string>  $properties
+     *
+     * @return array<string, mixed>
+     */
+    private function withAuthor(array $properties, ?string $hint): array
+    {
+        $chunk = $this->chunk();
+
+        $chunk['nodes'][4] = $this->node('auth-1', 'author', $properties, [], null, [], 'lib-1');
+        $chunk['nodes'][1]['references'][0]['targets'][0]['resolveInfo'] = $hint;
+
+        return $chunk;
+    }
+
+    /**
+     * A reference inside the chunk keeps its id *and* its hint; one outside
+     * keeps the hint.
+     *
+     * Which side a target is on is the distinction the writer cannot make
+     * until every node exists, and the one that decides whether a reference
+     * still points anywhere. Until 0.19.1 a reference inside lost its hint on
+     * the way out. LionWeb carries both, and a reader in another tool may
+     * only understand the second.
      */
     public function testAReferenceKeepsWhichSideOfTheChunkItPointsTo(): void
     {
@@ -235,27 +286,166 @@ final class LionwebRoundTripTest extends TestCase
 
         $written = InstanceChunk::of($language)->write($model);
 
-        $targets = [];
+        $this->assertSame(
+            [
+                ['reference' => 'auth-1', 'resolveInfo' => 'Herbert'],
+                ['reference' => null, 'resolveInfo' => 'someone-elsewhere'],
+            ],
+            $this->targets($written)
+        );
+    }
 
-        foreach ($written['nodes'] as $node) {
-            foreach ($node['references'] as $reference) {
-                $targets = $reference['targets'];
+    /**
+     * A property holding the target's own id is the hint, ahead of its name.
+     *
+     * That is how JCB writes them: every node is identified by its `guid`,
+     * the node id is that guid, and the hint on a reference to it is the guid
+     * again - which is what lets a tool without this chunk find the node.
+     */
+    public function testAnIdentityHeldInAPropertyIsTheHint(): void
+    {
+        $original = $this->withAuthor(['author-k-name' => 'Herbert', 'author-k-guid' => 'auth-1'], 'auth-1');
+        $language = $this->language();
+
+        $reader = InstanceModel::read(Chunk::fromArray($original), $language);
+        $model  = $reader->toStoredModel();
+
+        $this->assertSame([], $reader->diagnostics());
+
+        $written = InstanceChunk::of($language)->write($model);
+
+        $this->assertSame(['reference' => 'auth-1', 'resolveInfo' => 'auth-1'], $this->targets($written)[0]);
+        $this->assertSame($this->comparable($original), $this->comparable($written));
+    }
+
+    /**
+     * A target with nothing to be found by keeps its id and no hint.
+     */
+    public function testATargetWithNoNameHasNoHint(): void
+    {
+        $original = $this->withAuthor([], null);
+        $language = $this->language();
+
+        $model   = InstanceModel::read(Chunk::fromArray($original), $language)->toStoredModel();
+        $written = InstanceChunk::of($language)->write($model);
+
+        $this->assertSame(['reference' => 'auth-1', 'resolveInfo' => null], $this->targets($written)[0]);
+        $this->assertSame($this->comparable($original), $this->comparable($written));
+    }
+
+    /**
+     * A hint the way back cannot work out again is said on the way in.
+     *
+     * The stored model keeps the id of a target in the chunk and nothing
+     * else, so a hint following some rule of its own is lost. The reference
+     * still resolves; the reader says the hint will not come back rather than
+     * leaving it to a diff of two files.
+     */
+    public function testAHintThatWillNotComeBackIsReported(): void
+    {
+        $original = $this->withAuthor(['author-k-name' => 'Herbert'], 'F. Herbert');
+        $language = $this->language();
+
+        $reader = InstanceModel::read(Chunk::fromArray($original), $language);
+        $model  = $reader->toStoredModel();
+
+        $this->assertSame(['RESOLVE_INFO_NOT_KEPT'], array_column($reader->diagnostics(), 'code'));
+        $this->assertSame('auth-1', $model['book']['book0']['author'][0]);
+
+        $written = InstanceChunk::of($language)->write($model);
+
+        $this->assertSame(['reference' => 'auth-1', 'resolveInfo' => 'Herbert'], $this->targets($written)[0]);
+    }
+
+    /**
+     * JCB's Hello World comes back with every reference as it went in.
+     *
+     * 43 targets: 38 inside the chunk, with the target's guid as the hint,
+     * and 5 outside it with nothing but. The chunk is a copy of JcbInOut's
+     * `data/hello-world.instance.lionweb.json`. The manifest is the least the
+     * chunk itself implies - a concept per classifier, a feature per key -
+     * because what is under test is the references, not JCB's language.
+     */
+    public function testJcbHelloWorldKeepsEveryReference(): void
+    {
+        $json = file_get_contents(\dirname(__DIR__) . '/Fixtures/lionweb/jcb-hello-world.instance.lionweb.json');
+        $this->assertIsString($json);
+
+        $original = json_decode($json, true, 512, JSON_THROW_ON_ERROR);
+        $this->assertIsArray($original);
+
+        $language = $this->languageImpliedBy($original);
+        $reader   = InstanceModel::read(Chunk::fromArray($original), $language);
+        $model    = $reader->toStoredModel();
+
+        $this->assertSame([], $reader->diagnostics());
+
+        $writer  = InstanceChunk::of($language);
+        $written = $writer->write($model);
+
+        // Sorted, because the writer lists nodes in the order it walks them.
+        $sorted = static function (array $targets): array {
+            usort($targets, static fn (array $a, array $b): int => json_encode($a) <=> json_encode($b));
+
+            return $targets;
+        };
+
+        $before = $this->targets($original);
+
+        $this->assertCount(43, $before);
+        $this->assertCount(38, array_filter($before, static fn (array $t): bool => $t['reference'] !== null));
+        $this->assertSame($sorted($before), $sorted($this->targets($written)));
+        $this->assertSame($this->comparable($original), $this->comparable($written));
+    }
+
+    /**
+     * A manifest with a concept for every classifier in a chunk and a feature
+     * for every key: properties without `multiple`, links with it.
+     *
+     * @param  array<string, mixed>  $chunk
+     */
+    private function languageImpliedBy(array $chunk): PackageManifest
+    {
+        $concepts = [];
+        $root     = '';
+
+        foreach ($chunk['nodes'] as $node) {
+            $concept = $node['classifier']['key'];
+
+            if ($node['parent'] === null) {
+                $root = $concept;
+            }
+
+            $concepts[$concept] ??= [];
+
+            foreach ($node['properties'] as $property) {
+                $key = $property['property']['key'];
+
+                $concepts[$concept][$key] ??= ['key' => $key, 'name' => $key];
+            }
+
+            foreach (['containments' => 'containment', 'references' => 'reference'] as $bucket => $field) {
+                foreach ($node[$bucket] as $link) {
+                    $key = $link[$field]['key'];
+
+                    $concepts[$concept][$key] = ['key' => $key, 'name' => $key, 'multiple' => true];
+                }
             }
         }
 
-        $this->assertSame(
-            [
-                ['reference' => 'auth-1', 'resolveInfo' => null],
-                ['reference' => null, 'resolveInfo' => 'someone-elsewhere'],
-            ],
-            array_map(
-                static fn (array $t): array => [
-                    'reference'   => $t['reference'] ?? null,
-                    'resolveInfo' => $t['resolveInfo'] ?? null,
+        return PackageManifest::fromJson((string) json_encode([
+            'format'   => MetalanguagePackage::FORMAT,
+            'name'     => 'JCB',
+            'version'  => $chunk['languages'][0]['version'],
+            'root'     => $root,
+            'concepts' => array_map(
+                static fn (string $key, array $features): array => [
+                    'key' => $key, 'name' => $key, 'features' => array_values($features),
                 ],
-                $targets
-            )
-        );
+                array_keys($concepts),
+                array_values($concepts)
+            ),
+        ]));
     }
 
     /**

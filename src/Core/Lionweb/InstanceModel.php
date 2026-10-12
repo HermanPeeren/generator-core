@@ -282,6 +282,8 @@ final class InstanceModel
                     continue;
                 }
 
+                $this->checkHint($target, $name, $id);
+
                 $pointed[] = $at;
             }
 
@@ -383,6 +385,48 @@ final class InstanceModel
         }
 
         return $numbered;
+    }
+
+    /**
+     * Whether a target's resolveInfo is one the way back will write again.
+     *
+     * Only the id of a target inside the chunk is stored, so its hint is
+     * dropped here and {@see InstanceChunk} works it out from the target node
+     * when the model goes back out. For JCB that gives the same answer every
+     * time. A chunk whose hints follow some other rule loses them, and that is
+     * said rather than discovered by diffing two files.
+     *
+     * @param  array<string, mixed>  $target
+     */
+    private function checkHint(array $target, string $name, string $id): void
+    {
+        $at   = $target['reference'] ?? null;
+        $hint = $target['resolveInfo'] ?? null;
+
+        if (!\is_string($at) || $hint === null || !$this->chunk->has($at)) {
+            return;
+        }
+
+        $known      = $this->features[(string) $this->chunk->classifierKey($at)] ?? [];
+        $properties = [];
+
+        foreach ($this->chunk->propertiesOf($at) as $key => $value) {
+            if (isset($known[$key])) {
+                $properties[$known[$key]['name']] = $value;
+            }
+        }
+
+        if (InstanceChunk::hintFor($at, $properties) === $hint) {
+            return;
+        }
+
+        $this->note(
+            'info',
+            'RESOLVE_INFO_NOT_KEPT',
+            'A target of ' . $name . ' on ' . $id . ' points at ' . $at . ' with the hint "'
+            . $hint . '", which is neither its id held in a property nor its name; the'
+            . ' reference is kept and the hint will not be written back.'
+        );
     }
 
     /**

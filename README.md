@@ -102,6 +102,15 @@ All of those produce a file that looks finished and is not, and `errors()` finds
 them before it exists. A dangling *reference* is reported but allowed — that is
 what a reference into a partition nobody sent looks like.
 
+A reference target in LionWeb has two halves, the node id and a `resolveInfo`
+hint, and either may be null. `InstanceChunk` writes the id when the target is
+in the chunk and the hint whenever it knows one: inside the chunk that is a
+property holding the target's own id (JCB's `guid`) or else its `name`;
+outside it, what the model stored. `InstanceModel` stores only the id of a
+target in the chunk, and says so (`RESOLVE_INFO_NOT_KEPT`) when the hint it
+drops is not one the way back would write again. JCB Demo J6, 2088 nodes and
+1001 targets, comes back with every reference unchanged.
+
 The two halves are checked against each other rather than each against itself,
 which is how a serialiser normally ends up agreeing with its own
 misunderstanding of the format: what the builder writes, the reader reads back

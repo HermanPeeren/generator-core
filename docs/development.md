@@ -243,3 +243,22 @@ machine has different timestamps and line endings, so its hash does not match.
 Pull `main` after a release, before the next version bump. Without `--checksum`
 the script keeps a committed checksum while the download stays the same, and
 drops it when the version changes.
+
+### Waiting for a release
+
+Changes on a branch or on `main` that no tag carries yet, and what the
+consumers have to do once one does.
+
+- **A reference inside the chunk keeps its `resolveInfo`** (branch
+  `fix/reference-resolveinfo`, `@since 0.19.1`). `InstanceChunk` wrote such a
+  reference with the id and a null hint, so JCB Demo J6 came back with 921 of
+  its 921 in-chunk hints gone. It now writes the target's own id when a
+  property holds it (JCB's `guid`), otherwise its `name`, otherwise null;
+  `InstanceModel` reports `RESOLVE_INFO_NOT_KEPT` for a hint that rule would
+  not reproduce. A patch release, 0.19.1, unless something else goes out with
+  it. **Exten-gen** is the one consumer that has to move: it is the only one
+  calling `InstanceChunk`. It is at `^0.18` and `0.18.0` now; for 0.19.1 its
+  `LIBRARY_MINIMUM` in `src/script.php` becomes `'0.19.1'` and its composer
+  constraint `^0.19`, together - `PackageTest` holds the constraint to the
+  minimum's first two parts. Meta-gen, Gen-gen, plug-gen and jcbinout do not
+  read or write instance chunks through the library and need no bump for it.

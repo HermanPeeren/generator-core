@@ -64,6 +64,16 @@ final class InstanceChunk
     private array $pending = [];
 
     /**
+     * Node id => the resolveInfo a reference to that node carries.
+     *
+     * Collected as each node is written, because a reference is resolved
+     * after the walk and by then the row it points at is long gone.
+     *
+     * @var array<string, string|null>
+     */
+    private array $hints = [];
+
+    /**
      * Concept key => feature name => what the language says about it.
      *
      * By *name*, because that is what a stored model keys its data by - the
@@ -126,6 +136,7 @@ final class InstanceChunk
     {
         $this->diagnostics = [];
         $this->pending     = [];
+        $this->hints       = [];
 
         $key = $this->languageKey !== ''
             ? $this->languageKey
@@ -209,6 +220,16 @@ final class InstanceChunk
         }
 
         $node = $builder->node($id, $this->pointer($concept))->parent($parent);
+
+        $properties = [];
+
+        foreach ($row as $name => $value) {
+            if (isset($known[$name]) && !$known[$name]['link'] && !\is_array($value)) {
+                $properties[(string) $name] = $value;
+            }
+        }
+
+        $this->hints[$id] = self::hintFor($id, $properties);
 
         foreach ($row as $name => $value) {
             if ($this->reserved((string) $name)) {
@@ -340,14 +361,59 @@ final class InstanceChunk
                 continue;
             }
 
-            $inside = $builder->has($reference['target']);
+            $target = $reference['target'];
 
-            $node->reference(
-                $reference['pointer'],
-                $inside ? $reference['target'] : null,
-                $inside ? null : $reference['target']
-            );
+            // Inside the chunk the id is what resolves it, and the hint goes
+            // with it as well. LionWeb allows both and a reader in another
+            // tool may only understand the second. Writing null there threw
+            // away all 921 hints JCB Demo J6's chunk had arrived with.
+            // Outside it the hint is all there is.
+            if ($builder->has($target)) {
+                $node->reference($reference['pointer'], $target, $this->hints[$target] ?? null);
+
+                continue;
+            }
+
+            $node->reference($reference['pointer'], null, $target);
         }
+    }
+
+    /**
+     * The resolveInfo for a reference to this node, worked out from the node.
+     *
+     * A stored model keeps one value per reference - the target's id when it
+     * is in the chunk - so the hint a chunk arrived with is not kept, and has
+     * to be found again on the target itself. Two places it can be, tried in
+     * this order:
+     *
+     * - a property holding the node's own id. That is a portable identity, and
+     *   what a tool without this chunk finds the node by: every node JCB
+     *   exports is identified by its `guid`, and the hint on a reference to it
+     *   is that guid.
+     * - a property called `name`, which is LionWeb's own convention (INamed)
+     *   and what a person reading the chunk recognises.
+     *
+     * Neither means null, which is what it was before; a reader resolves by
+     * the id, and the hint was only ever a hint.
+     *
+     * Public because {@see InstanceModel} asks the same question on the way
+     * in, to say when a hint is one this will not write back.
+     *
+     * @param  array<string, mixed>  $properties  The node's properties, by name.
+     *
+     * @since  0.19.1
+     */
+    public static function hintFor(string $id, array $properties): ?string
+    {
+        foreach ($properties as $value) {
+            if ($value === $id) {
+                return $id;
+            }
+        }
+
+        $name = $properties['name'] ?? null;
+
+        return \is_string($name) && $name !== '' ? $name : null;
     }
 
     /**
