@@ -216,9 +216,9 @@ of the library package and installs it from its own install script when it is
 missing or too old - the Regular Labs and Akeeba pattern, where the package
 manifest does not declare the library at all and `script.install.php` does the
 work. That script cannot come from the library, since it runs before the library
-exists, so it belongs to each extension. It is written when the first consuming
-extension exists rather than now, because an installer with nothing to install
-into cannot be tested.
+exists, so it belongs to each extension. How Exten-gen, Meta-gen and Gen-gen do
+it, including the one request where autoloading cannot help yet, is in
+[consuming.md](consuming.md).
 
 No version negotiation is needed: the library is used only within this family of
 extensions and all of it is developed in one place, so the check is presence and

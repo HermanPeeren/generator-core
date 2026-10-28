@@ -171,6 +171,9 @@ $files    = (new Pipeline())->run($model, $registry->get('drupal11'));
 
 - [docs/usage.md](docs/usage.md) — generating with the library: models,
   generators, targets, emitters, templates, protected regions.
+- [docs/consuming.md](docs/consuming.md) — using the library from a Joomla
+  extension: autoloading, installing it with a consumer, the first install, and
+  general advice for a shared custom library.
 - [docs/development.md](docs/development.md) — how this repository is put
   together, the two boundaries its tests enforce, golden files, and releasing.
 
