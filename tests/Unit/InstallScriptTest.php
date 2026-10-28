@@ -67,4 +67,17 @@ final class InstallScriptTest extends TestCase
         $this->assertSame([], $script->blockers(['com_content', 'com_users']));
         $this->assertSame(['Generator Generator'], $script->blockers(['com_content', 'com_gengen']));
     }
+
+    /**
+     * Installing over a library run through 0.19.1's script leaves the old row
+     * beside the new one; the newest, the row just written, is kept.
+     */
+    public function testOnlyTheNewestRowIsKept(): void
+    {
+        $script = self::script();
+
+        $this->assertSame([], $script->staleRows([281]));
+        $this->assertSame([], $script->staleRows([]));
+        $this->assertSame([281, 282], $script->staleRows([283, 281, 282]));
+    }
 }

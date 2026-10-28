@@ -60,6 +60,14 @@ components that need it is installed, enabled or not, and names them. It has to
 be preflight: `InstallerAdapter::uninstall()` stops when preflight returns
 false, before a file is removed, and ignores what `uninstall()` returns.
 
+An uninstall is not always somebody removing the library. Installing a
+library over an existing one starts by uninstalling the old one, with the old
+one's script, and uninstalling a package uninstalls its children. Joomla marks
+both with `setPackageUninstall(true)` on the installer it uses; Manage does not,
+so the guard steps aside when it is set. 0.19.1 did not, and an update over it
+leaves a second, stale library row behind; the script's `postflight` from
+0.19.2 on removes it.
+
 The components leave the library in place when they are uninstalled
 themselves, because the others may still use it. Once the last one is gone, the
 library can be uninstalled.

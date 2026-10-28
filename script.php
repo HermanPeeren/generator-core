@@ -28,6 +28,15 @@ use Joomla\Database\ParameterType;
  * counts: `InstallerAdapter::uninstall()` stops when preflight returns false,
  * before a file is removed, and ignores what `uninstall()` returns.
  *
+ * Not every uninstall is somebody removing the library. Installing a library
+ * over an existing one starts with `LibraryAdapter::checkExtensionInFilesystem()`
+ * uninstalling the old one, with this script, before the new one's preflight;
+ * and uninstalling a package uninstalls its children. Both run on an Installer
+ * marked with `setPackageUninstall(true)`, and Manage never sets it, so that is
+ * what tells them apart. 0.19.1 refused those too: the update went on regardless,
+ * because nothing reads what that inner uninstall returns, and left the old
+ * row beside the new one. `postflight` clears that up.
+ *
  * The components leave the library in place when they are uninstalled
  * themselves, so the last one going does not take it along. Removing it after
  * that is a deliberate act, and nothing stops it.
@@ -63,7 +72,7 @@ return new class () implements InstallerScriptInterface {
 
     public function preflight(string $type, InstallerAdapter $adapter): bool
     {
-        if ($type !== 'uninstall') {
+        if ($type !== 'uninstall' || $adapter->getParent()->isPackageUninstall()) {
             return true;
         }
 
@@ -86,7 +95,59 @@ return new class () implements InstallerScriptInterface {
 
     public function postflight(string $type, InstallerAdapter $adapter): bool
     {
+        if ($type !== 'uninstall') {
+            $this->removeStaleRows();
+        }
+
         return true;
+    }
+
+    /**
+     * Of several rows for this library, the one to keep: the newest.
+     *
+     * An install inserts its row, so the one just written has the highest id.
+     *
+     * @param   int[]  $ids  Extension ids of every row for this library.
+     *
+     * @return  int[]  The ids to remove.
+     */
+    public function staleRows(array $ids): array
+    {
+        sort($ids);
+        array_pop($ids);
+
+        return $ids;
+    }
+
+    /**
+     * Remove the rows an update under 0.19.1 left behind.
+     *
+     * The files are the new library's either way; only the old record stays,
+     * still at the old version, so Joomla keeps offering it an update and
+     * Manage lists the library twice.
+     */
+    private function removeStaleRows(): void
+    {
+        $db    = Factory::getContainer()->get(DatabaseInterface::class);
+        $query = $db->getQuery(true)
+            ->select($db->quoteName('extension_id'))
+            ->from($db->quoteName('#__extensions'))
+            ->where($db->quoteName('type') . ' = ' . $db->quote('library'))
+            ->where($db->quoteName('element') . ' = ' . $db->quote('yepr_gen'));
+
+        $stale = $this->staleRows(array_map('intval', $db->setQuery($query)->loadColumn()));
+
+        if ($stale === []) {
+            return;
+        }
+
+        foreach (['#__update_sites_extensions', '#__updates', '#__extensions'] as $table) {
+            $db->setQuery(
+                $db->getQuery(true)
+                    ->delete($db->quoteName($table))
+                    ->whereIn($db->quoteName('extension_id'), $stale)
+            )->execute();
+        }
     }
 
     /**
