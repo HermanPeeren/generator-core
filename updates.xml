@@ -13,6 +13,7 @@
 		<downloads>
 			<downloadurl type="full" format="zip">https://github.com/HermanPeeren/generator-core/releases/download/v0.19.2/lib_yepr_gen-0.19.2.zip</downloadurl>
 		</downloads>
+		<sha512>e0247f2a94125a02be8387d3fa4dc5de617a7563d8baa419b914975bd699116bb0523569c93cb65fc503f21c224495abbdc72f7a1a82560b8695627968ea3af8</sha512>
 		<maintainer>Herman Peeren</maintainer>
 		<maintainerurl>https://yepr.nl</maintainerurl>
 		<targetplatform name="joomla" version="6\..*"/>
