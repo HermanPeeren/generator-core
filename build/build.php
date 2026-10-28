@@ -82,6 +82,14 @@ echo '  media/                   copied
 copy($manifest, $staging . '/yepr_gen.xml');
 copy($root . '/LICENSE.txt', $staging . '/LICENSE.txt');
 
+// The install script, which the manifest names and the installer copies into
+// libraries/yepr_gen, where an uninstall looks for it.
+$script = trim((string) $xml->scriptfile);
+
+if ($script !== '') {
+    copy($root . '/' . $script, $staging . '/' . $script);
+}
+
 // --- dependencies, resolved for production ----------------------------------
 
 copy($root . '/composer.json', $staging . '/composer.json');

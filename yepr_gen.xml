@@ -23,6 +23,13 @@
 	-->
 	<namespace path="src">Yepr\Gen</namespace>
 
+	<!--
+		Refuses to uninstall the library while a component that needs it is
+		still installed. LibraryAdapter copies it into libraries/yepr_gen, which
+		is where the uninstall looks for it.
+	-->
+	<scriptfile>script.php</scriptfile>
+
 	<files>
 		<filename>yepr_gen.xml</filename>
 		<filename>LICENSE.txt</filename>

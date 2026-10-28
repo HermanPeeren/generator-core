@@ -52,6 +52,18 @@ On an update both are already in the map. That is why a development site, which
 only ever updates, never showed the problem: test the first install on a fresh
 site.
 
+## Uninstalling
+
+Joomla does not track dependencies between extensions, so the library guards
+itself. Its `script.php` refuses an uninstall in `preflight` while any of the
+components that need it is installed, enabled or not, and names them. It has to
+be preflight: `InstallerAdapter::uninstall()` stops when preflight returns
+false, before a file is removed, and ignores what `uninstall()` returns.
+
+The components leave the library in place when they are uninstalled
+themselves, because the others may still use it. Once the last one is gone, the
+library can be uninstalled.
+
 ## Media
 
 The reference dropdown is half PHP and half browser, so the library carries
@@ -85,8 +97,11 @@ a site.
    own and each consumer states the minimum it needs.
 5. **Cover the first-install request explicitly.** Whatever an install script
    needs from a namespace installed in the same request, it loads by hand.
-6. **Let media travel with the library**, in `media/lib_<name>/` with a
+6. **Guard the uninstall.** Give the library an install script whose
+   `preflight('uninstall')` returns false while a consumer is installed.
+   Consumers never uninstall the library themselves.
+7. **Let media travel with the library**, in `media/lib_<name>/` with a
    `joomla.asset.json` that consumers register by name.
-7. **Keep the wiring in the consumer.** The library supplies classes; each
+8. **Keep the wiring in the consumer.** The library supplies classes; each
    consumer puts them in its own DI container, in `services/provider.php`,
    rather than reaching them through static calls or globals.

@@ -8,6 +8,7 @@
 	<file>src</file>
 	<file>tests</file>
 	<file>build</file>
+	<file>script.php</file>
 
 	<exclude-pattern>*/vendor/*</exclude-pattern>
 	<!-- Generated output: reviewed as a diff, not as hand-written source. -->
